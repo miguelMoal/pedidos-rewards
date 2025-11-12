@@ -29,6 +29,7 @@ function App() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
 
   useEffect(() => {
     const loadCustomers = async () => {
@@ -54,6 +55,10 @@ function App() {
   };
 
   const handleOTPVerified = () => {
+    // Guardar el teléfono verificado para no pedir OTP de nuevo
+    if (pendingCustomerData?.phone) {
+      setVerifiedPhone(pendingCustomerData.phone);
+    }
     setCurrentScreen("new-customer");
   };
 
@@ -98,9 +103,17 @@ function App() {
   };
 
   const handleRequestRedeemOTP = (customer: Customer) => {
-    setRedeemCustomer(customer);
-    setCurrentScreen("redeem-otp-verification");
-    toast.success("Código de verificación enviado a " + customer.phone);
+    // Si el cliente ya fue verificado recientemente (especialmente si es el último cliente registrado),
+    // omitir el OTP y ir directo a canjear recompensas
+    if (verifiedPhone && customer.phone === verifiedPhone) {
+      setRedeemCustomer(customer);
+      setCurrentScreen("register-sale");
+      toast.success("Cliente verificado, puedes canjear recompensas");
+    } else {
+      setRedeemCustomer(customer);
+      setCurrentScreen("redeem-otp-verification");
+      toast.success("Código de verificación enviado a " + customer.phone);
+    }
   };
 
   if (isLoadingCustomers) {
@@ -146,6 +159,7 @@ function App() {
 
       {currentScreen === "register-sale" && (
         <RegisterSale
+          key={`register-sale-${(redeemCustomer || lastCustomer)?.id || 'new'}`}
           onBack={() => {
             setRedeemCustomer(null);
             setLastCustomer(null);
@@ -167,7 +181,10 @@ function App() {
             setCurrentScreen("register-sale");
           }}
           onVerified={() => {
-            // After verification, go to register-sale with customer pre-selected and direct to redeem
+            // After verification, save the verified phone and go to register-sale with customer pre-selected and direct to redeem
+            if (redeemCustomer) {
+              setVerifiedPhone(redeemCustomer.phone);
+            }
             setCurrentScreen("register-sale");
           }}
           customerPhone={redeemCustomer.phone}
@@ -186,6 +203,7 @@ function App() {
             lastCustomer && lastCustomer.visits === 0
               ? () => {
                   // Para cliente nuevo, ir directo a registrar venta con el cliente pre-seleccionado
+                  // El teléfono ya está verificado, así que no se pedirá OTP de nuevo si quiere canjear recompensas
                   setCurrentScreen("register-sale");
                 }
               : undefined

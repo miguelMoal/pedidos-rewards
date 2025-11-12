@@ -49,7 +49,18 @@ type Step = "identification" | "action-menu" | "redeem-rewards" | "register-amou
 type InputMethod = "manual" | "scan";
 
 export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemRewards, onRequestRedeemOTP, preSelectedCustomer, goDirectToRedeem }: RegisterSaleProps) {
-  const [step, setStep] = useState<Step>(goDirectToRedeem && preSelectedCustomer ? "redeem-rewards" : "identification");
+  // Paso inicial: si hay cliente preseleccionado, ir al menú de acciones (o directo a canjear si goDirectToRedeem)
+  const getInitialStep = (): Step => {
+    if (goDirectToRedeem && preSelectedCustomer) {
+      return "redeem-rewards";
+    }
+    if (preSelectedCustomer) {
+      return "action-menu";
+    }
+    return "identification";
+  };
+  
+  const [step, setStep] = useState<Step>(() => getInitialStep());
   const [identification, setIdentification] = useState("");
   const [amount, setAmount] = useState("");
   const [barcode, setBarcode] = useState("");
@@ -69,6 +80,21 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
       setSelectedCustomer(preSelectedCustomer);
     }
   }, [preSelectedCustomer]);
+
+  // Update step when pre-selected customer or goDirectToRedeem changes
+  // Esto asegura que cuando se pasa un cliente preseleccionado, se vaya al paso correcto
+  useEffect(() => {
+    if (goDirectToRedeem && preSelectedCustomer) {
+      // Si se debe ir directo a canjear recompensas
+      setStep("redeem-rewards");
+    } else if (preSelectedCustomer && !goDirectToRedeem) {
+      // Si hay cliente preseleccionado pero no vamos directo a canjear, ir al menú de acciones
+      setStep("action-menu");
+    } else if (!preSelectedCustomer) {
+      // Si no hay cliente preseleccionado, ir a identificación
+      setStep("identification");
+    }
+  }, [goDirectToRedeem, preSelectedCustomer]);
 
   useEffect(() => {
     if (identification && step === "identification") {
