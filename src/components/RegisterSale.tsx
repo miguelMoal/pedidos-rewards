@@ -357,6 +357,34 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
     setStep("action-menu");
   };
 
+  // Función para manejar el botón "Volver" del header según el step actual
+  const handleBackFromHeader = () => {
+    switch (step) {
+      case "identification":
+        // Volver al menú principal
+        onBack();
+        break;
+      case "action-menu":
+        // Volver a identificación y limpiar cliente seleccionado
+        setSelectedCustomer(null);
+        setIdentification("");
+        setIdentificationError(null);
+        setStep("identification");
+        break;
+      case "redeem-rewards":
+        // Volver al menú de acciones
+        handleBackFromRewards();
+        break;
+      case "register-amount":
+        // Volver al menú de acciones
+        handleBackFromAmount();
+        break;
+      default:
+        // Por defecto, volver al menú principal
+        onBack();
+    }
+  };
+
   const handleContinueIdentification = async () => {
     if (!identification || identification.trim().length === 0) {
       setIdentificationError("Por favor ingresa un código o número de teléfono");
@@ -434,8 +462,8 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
       <div className="bg-white border-b border-gray-100 px-6 py-3">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <button 
-            onClick={step === "identification" ? onBack : step === "action-choice" ? handleBackFromChoice : handleBackFromAmount}
-            className="flex items-center gap-2 text-[#101828] hover:text-[#046741] transition-colors"
+            onClick={handleBackFromHeader}
+            className="flex items-center gap-2 text-[#101828] hover:text-[#046741] transition-colors active:scale-[0.98]"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>Volver</span>
