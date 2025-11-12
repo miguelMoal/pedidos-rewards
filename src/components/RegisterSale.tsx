@@ -9,6 +9,7 @@ import { Confirmation } from "./Confirmation";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { toast } from "sonner";
 import { createVisit, getCustomerVisitsCount, redeemVisits } from "../supabase/actions/visitActions";
+import { getCustomerByPhone, getCustomerByBarcode } from "../supabase/actions/customerActions";
 import {
   Dialog,
   DialogContent,
@@ -75,6 +76,8 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
   const [showRedeemCompleted, setShowRedeemCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [identificationError, setIdentificationError] = useState<string | null>(null);
+  const [isValidatingIdentification, setIsValidatingIdentification] = useState(false);
 
   // Set pre-selected customer when provided
   useEffect(() => {
@@ -103,23 +106,40 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
     }
   }, [goDirectToRedeem, preSelectedCustomer]);
 
-  useEffect(() => {
-    if (identification && step === "identification") {
-      const customer = customers.find(
-        c => c.cardBarcode === identification || c.phone === identification
-      );
-      if (customer) {
-        setSelectedCustomer(customer);
-        // No cambiar automáticamente, esperar el clic en "Continuar"
-      } else {
-        setSelectedCustomer(null);
-      }
+  // Validación de formato de número de teléfono
+  // Formato esperado: números solamente, entre 10 y 15 dígitos (puede incluir código de país)
+  const isValidPhoneNumber = (phone: string): boolean => {
+    // Remover espacios, guiones y otros caracteres no numéricos
+    const cleaned = phone.replace(/\D/g, '');
+    // Validar que tenga entre 10 y 15 dígitos (formato internacional)
+    return cleaned.length >= 10 && cleaned.length <= 15;
+  };
+
+  // Validación de código de tarjeta (barcode)
+  // Formato esperado: números solamente, al menos 4 dígitos
+  const isValidBarcode = (barcode: string): boolean => {
+    // Remover espacios y otros caracteres no numéricos
+    const cleaned = barcode.replace(/\D/g, '');
+    // Validar que tenga al menos 4 dígitos
+    return cleaned.length >= 4;
+  };
+
+  // Validar formato del input
+  const isValidIdentificationFormat = (identification: string): boolean => {
+    if (!identification || identification.trim().length === 0) {
+      return false;
     }
-  }, [identification, customers, step]);
+    // Puede ser teléfono o código de tarjeta
+    return isValidPhoneNumber(identification) || isValidBarcode(identification);
+  };
 
   const handleNumberClick = (num: string) => {
     if (step === "identification") {
       setIdentification(identification + num);
+      // Limpiar error al editar
+      if (identificationError) {
+        setIdentificationError(null);
+      }
     } else if (step === "register-amount") {
       if (activeField === "amount") {
         if (num === "." && amount.includes(".")) return;
@@ -131,16 +151,23 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
   };
 
   const handleClear = () => {
-    if (step === "identification") setIdentification("");
-    else if (step === "register-amount") {
+    if (step === "identification") {
+      setIdentification("");
+      setIdentificationError(null); // Limpiar error al limpiar el campo
+    } else if (step === "register-amount") {
       if (activeField === "amount") setAmount("");
       else if (activeField === "barcode") setBarcode("");
     }
   };
 
   const handleBackspace = () => {
-    if (step === "identification") setIdentification(identification.slice(0, -1));
-    else if (step === "register-amount") {
+    if (step === "identification") {
+      setIdentification(identification.slice(0, -1));
+      // Limpiar error al editar
+      if (identificationError) {
+        setIdentificationError(null);
+      }
+    } else if (step === "register-amount") {
       if (activeField === "amount") setAmount(amount.slice(0, -1));
       else if (activeField === "barcode") setBarcode(barcode.slice(0, -1));
     }
@@ -330,6 +357,59 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
     setStep("action-menu");
   };
 
+  const handleContinueIdentification = async () => {
+    if (!identification || identification.trim().length === 0) {
+      setIdentificationError("Por favor ingresa un código o número de teléfono");
+      return;
+    }
+
+    // Limpiar error previo
+    setIdentificationError(null);
+
+    // Validar formato
+    if (!isValidIdentificationFormat(identification)) {
+      setIdentificationError("El formato ingresado no es válido. Ingresa un número de teléfono (10-15 dígitos) o un código de tarjeta (mínimo 4 dígitos)");
+      return;
+    }
+
+    setIsValidatingIdentification(true);
+    setLoadingMessage("Verificando cliente...");
+
+    try {
+      let customer: Customer | null = null;
+
+      // Limpiar el identificador (solo números)
+      const cleanedIdentification = identification.replace(/\D/g, '');
+
+      // Intentar buscar por teléfono primero (si tiene 10-15 dígitos)
+      if (isValidPhoneNumber(identification)) {
+        customer = await getCustomerByPhone(cleanedIdentification);
+      }
+
+      // Si no se encontró por teléfono, intentar buscar por código de tarjeta
+      if (!customer && isValidBarcode(identification)) {
+        customer = await getCustomerByBarcode(cleanedIdentification);
+      }
+
+      if (customer) {
+        setSelectedCustomer(customer);
+        setIdentificationError(null);
+        setStep("action-menu");
+        toast.success(`Cliente encontrado: ${customer.name}`);
+      } else {
+        setIdentificationError("Cliente no encontrado. Verifica el código o teléfono ingresado");
+        setSelectedCustomer(null);
+      }
+    } catch (error) {
+      console.error("Error al buscar cliente:", error);
+      setIdentificationError(error instanceof Error ? error.message : "Error al verificar el cliente. Por favor intenta de nuevo");
+      setSelectedCustomer(null);
+    } finally {
+      setIsValidatingIdentification(false);
+      setLoadingMessage("");
+    }
+  };
+
   const handleGoToRedeem = () => {
     // No permitir canjear si el cliente tiene menos de 3 visitas
     if (!selectedCustomer || selectedCustomer.visits < 3) {
@@ -423,24 +503,15 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                     </div>
                     
                     <button
-                      onClick={async () => {
-                        if (identification && selectedCustomer) {
-                          setIsLoading(true);
-                          setLoadingMessage("Verificando cliente...");
-                          // Simular consulta que podría demorar
-                          await new Promise(resolve => setTimeout(resolve, 1000));
-                          setIsLoading(false);
-                          setStep("action-menu");
-                        }
-                      }}
-                      disabled={!identification || !selectedCustomer || isLoading}
+                      onClick={handleContinueIdentification}
+                      disabled={!identification || identification.trim().length === 0 || isValidatingIdentification || isLoading}
                       className={`w-full h-12 rounded-[14px] transition-all flex items-center justify-center gap-2 ${
-                        identification && selectedCustomer && !isLoading
+                        identification && identification.trim().length > 0 && !isValidatingIdentification && !isLoading
                           ? "bg-[#046741] hover:bg-[#035230] text-white shadow-lg hover:shadow-xl active:scale-[0.98]"
                           : "bg-gray-200 text-gray-400 cursor-not-allowed"
                       }`}
                     >
-                      {isLoading ? (
+                      {isValidatingIdentification || isLoading ? (
                         <div className="w-6 h-6">
                           <LoadingSpinner size={24} />
                         </div>
@@ -453,10 +524,10 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                     </button>
                   </div>
                   
-                  {identification && !selectedCustomer && (
-                    <div className="mt-4 bg-red-50 border-2 border-red-200 rounded-[14px] p-4 text-center animate-pulse">
-                      <p className="text-red-900">Cliente no encontrado</p>
-                      <p className="text-sm text-red-700 mt-1">Verifica el código o teléfono ingresado</p>
+                  {identificationError && (
+                    <div className="mt-4 bg-red-50 border-2 border-red-200 rounded-[14px] p-4 text-center">
+                      <p className="text-red-900 font-medium">Error</p>
+                      <p className="text-sm text-red-700 mt-1">{identificationError}</p>
                     </div>
                   )}
                 </div>
