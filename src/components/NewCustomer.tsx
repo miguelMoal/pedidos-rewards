@@ -8,6 +8,9 @@ import { NumericKeypad } from "./NumericKeypad";
 import { AlphabeticKeypad } from "./AlphabeticKeypad";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import type { Customer } from "../types";
+import { createCustomer } from "../supabase/actions/customerActions";
+import { toast } from "sonner";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 interface NewCustomerProps {
   onBack: () => void;
@@ -27,6 +30,7 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
   const [office, setOffice] = useState("");
   const [activeInput, setActiveInput] = useState<"phone" | "barcode" | "name" | "office" | null>(null);
   const [showPhoneOnly, setShowPhoneOnly] = useState(!phoneVerified);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleDemoFill = () => {
     if (showPhoneOnly) {
@@ -81,27 +85,38 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
     else if (activeInput === "office") setOffice(office.slice(0, -1));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newCustomer: Customer = {
-      id: Math.random().toString(36).substr(2, 9),
-      phone,
-      name,
-      gender,
-      contactChannel,
-      cardBarcode,
-      worksForFederal,
-      office: worksForFederal ? office : undefined,
-      points: 0,
-      visits: 0,
-      createdAt: new Date(),
-    };
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     
-    onRegister(newCustomer);
+    try {
+      const newCustomer = await createCustomer({
+        phone,
+        name,
+        gender,
+        contactChannel,
+        cardBarcode,
+        worksForFederal,
+        office: worksForFederal ? office : undefined,
+        points: 0,
+        visits: 0,
+      });
+      
+      onRegister(newCustomer);
+    } catch (error) {
+      console.error("Error al crear cliente:", error);
+      toast.error(error instanceof Error ? error.message : "Error al registrar el cliente");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const isFormValid = phone.length === 10 && name && cardBarcode && (!worksForFederal || office);
+  // Validar que cardBarcode sea un número válido
+  const isCardBarcodeValid = cardBarcode && !isNaN(parseInt(cardBarcode, 10)) && parseInt(cardBarcode, 10) > 0;
+  const isFormValid = phone.length === 10 && name && isCardBarcodeValid && (!worksForFederal || office);
 
   return (
     <div className="h-screen bg-[#f8f9fa] flex flex-col">
@@ -320,14 +335,21 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
 
                   <button
                     type="submit"
-                    disabled={!isFormValid}
+                    disabled={!isFormValid || isSubmitting}
                     className={`w-full h-14 rounded-[14px] transition-all shadow-sm flex items-center justify-center flex-shrink-0 ${
-                      isFormValid
+                      isFormValid && !isSubmitting
                         ? "bg-[#046741] hover:bg-[#035230] text-white active:scale-[0.98]"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
                     }`}
                   >
-                    <span className="text-lg text-center">Registrar Cliente</span>
+                    {isSubmitting ? (
+                      <div className="flex items-center gap-2">
+                        <LoadingSpinner size={20} />
+                        <span className="text-lg text-center">Registrando...</span>
+                      </div>
+                    ) : (
+                      <span className="text-lg text-center">Registrar Cliente</span>
+                    )}
                   </button>
                 </form>
               )}

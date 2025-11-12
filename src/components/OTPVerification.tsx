@@ -28,10 +28,11 @@ export function OTPVerification({ phone, onBack, onVerified }: OTPVerificationPr
   const handleOTPComplete = async (value: string) => {
     setOtp(value);
     setIsVerifying(true);
-    // Simulamos validación - en producción esto iría a un servidor
+    // Simulamos validación - en producción esto iría a un servicio externo
+    // Por ahora, aceptamos cualquier código de 4 dígitos como ejemplo
     await new Promise(resolve => setTimeout(resolve, 1200));
     
-    if (value === "1234") {
+    if (value.length === 4) {
       toast.success("Código verificado correctamente");
       setTimeout(() => {
         setIsVerifying(false);
@@ -58,8 +59,9 @@ export function OTPVerification({ phone, onBack, onVerified }: OTPVerificationPr
   };
 
   const handleDemoFill = () => {
-    setOtp("1234");
-    handleOTPComplete("1234");
+    const demoCode = "1234";
+    setOtp(demoCode);
+    handleOTPComplete(demoCode);
   };
 
   const handleNumberClick = (num: string) => {
@@ -208,7 +210,7 @@ export function OTPVerification({ phone, onBack, onVerified }: OTPVerificationPr
                 {/* Help Text */}
                 <div className="mt-4 text-center">
                   <p className="text-xs text-[#4a5565]">
-                    💡 Para demo, usa el código: <span className="text-[#046741]">1234</span>
+                    💡 Para demo, puedes usar cualquier código de 4 dígitos
                   </p>
                 </div>
               </div>

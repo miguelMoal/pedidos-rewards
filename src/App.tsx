@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MainMenu } from "./components/MainMenu";
 import { NewCustomer } from "./components/NewCustomer";
 import { OTPVerification } from "./components/OTPVerification";
@@ -8,6 +8,8 @@ import { Confirmation } from "./components/Confirmation";
 import type { Customer, Transaction } from "./types";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
+import { getCustomers } from "./supabase/actions/customerActions";
+import { LoadingSpinner } from "./components/LoadingSpinner";
 
 type Screen =
   | "menu"
@@ -24,31 +26,26 @@ function App() {
     useState<Partial<Customer> | null>(null);
   const [redeemCustomer, setRedeemCustomer] = useState<Customer | null>(null);
   const [lastCustomer, setLastCustomer] = useState<Customer | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([
-    {
-      id: "demo1",
-      phone: "5551234567",
-      name: "María García",
-      gender: "Femenino",
-      contactChannel: "WhatsApp",
-      code: "INV001",
-      cardBarcode: "1234567890123",
-      visits: 15,
-      createdAt: new Date("2024-10-15"),
-    },
-    {
-      id: "demo2",
-      phone: "5559876543",
-      name: "Carlos Rodríguez",
-      gender: "Masculino",
-      contactChannel: "SMS",
-      code: "INV002",
-      cardBarcode: "9876543210987",
-      visits: 22,
-      createdAt: new Date("2024-09-20"),
-    },
-  ]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
+
+  useEffect(() => {
+    const loadCustomers = async () => {
+      try {
+        setIsLoadingCustomers(true);
+        const loadedCustomers = await getCustomers();
+        setCustomers(loadedCustomers);
+      } catch (error) {
+        console.error("Error al cargar clientes:", error);
+        toast.error("Error al cargar los clientes");
+      } finally {
+        setIsLoadingCustomers(false);
+      }
+    };
+
+    loadCustomers();
+  }, []);
 
   const handlePhoneSubmit = (phone: string) => {
     setPendingCustomerData({ phone });
@@ -60,13 +57,19 @@ function App() {
     setCurrentScreen("new-customer");
   };
 
-  const handleNewCustomer = (customer: Customer) => {
-    setCustomers([...customers, customer]);
-    setLastCustomer(customer); // Guardar el cliente recién registrado
-    setConfirmationMessage(`Cliente ${customer.name} registrado exitosamente`);
-    setCurrentScreen("confirmation");
-    setPendingCustomerData(null);
-    toast.success("Cliente registrado correctamente");
+  const handleNewCustomer = async (customer: Customer) => {
+    try {
+      setCustomers([...customers, customer]);
+      setLastCustomer(customer);
+      setConfirmationMessage(
+        `Cliente ${customer.name} registrado exitosamente`
+      );
+      setCurrentScreen("confirmation");
+      setPendingCustomerData(null);
+      toast.success("Cliente registrado correctamente");
+    } catch (error) {
+      console.error("Error al manejar nuevo cliente:", error);
+    }
   };
 
   const handleRegisterSale = (
@@ -99,6 +102,14 @@ function App() {
     setCurrentScreen("redeem-otp-verification");
     toast.success("Código de verificación enviado a " + customer.phone);
   };
+
+  if (isLoadingCustomers) {
+    return (
+      <div className="h-screen bg-[#f8f9fa] flex items-center justify-center">
+        <LoadingSpinner size={100} message="Cargando clientes..." />
+      </div>
+    );
+  }
 
   return (
     <>
