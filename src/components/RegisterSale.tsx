@@ -87,8 +87,13 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
   // Esto asegura que cuando se pasa un cliente preseleccionado, se vaya al paso correcto
   useEffect(() => {
     if (goDirectToRedeem && preSelectedCustomer) {
-      // Si se debe ir directo a canjear recompensas
-      setStep("redeem-rewards");
+      // Si se debe ir directo a canjear recompensas, verificar que tenga al menos 3 visitas
+      if (preSelectedCustomer.visits >= 3) {
+        setStep("redeem-rewards");
+      } else {
+        // Si no tiene 3 visitas, ir al menú de acciones en lugar de canjear
+        setStep("action-menu");
+      }
     } else if (preSelectedCustomer && !goDirectToRedeem) {
       // Si hay cliente preseleccionado pero no vamos directo a canjear, ir al menú de acciones
       setStep("action-menu");
@@ -313,6 +318,12 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
   };
 
   const handleGoToRedeem = () => {
+    // No permitir canjear si el cliente tiene menos de 3 visitas
+    if (!selectedCustomer || selectedCustomer.visits < 3) {
+      toast.error(`Necesitas al menos 3 visitas para canjear recompensas. Tienes ${selectedCustomer?.visits || 0} visita${selectedCustomer?.visits !== 1 ? 's' : ''}`);
+      return;
+    }
+    
     if (onRequestRedeemOTP && selectedCustomer) {
       onRequestRedeemOTP(selectedCustomer);
     } else {
@@ -499,18 +510,45 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                   {/* Canjear Recompensas */}
                   <button
                     onClick={handleGoToRedeem}
-                    className="bg-white rounded-2xl p-12 transition-all hover:shadow-xl hover:-translate-y-1 border-2 border-gray-100 group relative overflow-hidden active:scale-[0.98]"
+                    disabled={!selectedCustomer || selectedCustomer.visits < 3}
+                    className={`rounded-2xl p-12 transition-all border-2 group relative overflow-hidden ${
+                      selectedCustomer && selectedCustomer.visits >= 3
+                        ? "bg-white hover:shadow-xl hover:-translate-y-1 border-gray-100 active:scale-[0.98] cursor-pointer"
+                        : "bg-gray-100 border-gray-200 cursor-not-allowed opacity-60"
+                    }`}
                   >
                     {/* Decorative background */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#046741]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    {selectedCustomer && selectedCustomer.visits >= 3 && (
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#046741]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    )}
                     
                     <div className="relative flex flex-col items-center gap-6">
-                      <div className="bg-gradient-to-br from-[#046741] to-[#035230] rounded-2xl p-5 shadow-lg group-hover:scale-110 transition-transform">
-                        <Gift className="w-12 h-12 text-white" />
+                      <div className={`rounded-2xl p-5 shadow-lg transition-transform ${
+                        selectedCustomer && selectedCustomer.visits >= 3
+                          ? "bg-gradient-to-br from-[#046741] to-[#035230] group-hover:scale-110"
+                          : "bg-gray-300"
+                      }`}>
+                        <Gift className={`w-12 h-12 ${
+                          selectedCustomer && selectedCustomer.visits >= 3
+                            ? "text-white"
+                            : "text-gray-500"
+                        }`} />
                       </div>
                       <div className="text-center">
-                        <p className="text-[#101828] text-[17px] mb-1">Canjear Recompensas</p>
-                        <p className="text-xs text-[#4a5565]">Usa tus visitas acumuladas</p>
+                        <p className={`text-[17px] mb-1 ${
+                          selectedCustomer && selectedCustomer.visits >= 3
+                            ? "text-[#101828]"
+                            : "text-gray-500"
+                        }`}>Canjear Recompensas</p>
+                        <p className={`text-xs ${
+                          selectedCustomer && selectedCustomer.visits >= 3
+                            ? "text-[#4a5565]"
+                            : "text-gray-400"
+                        }`}>
+                          {selectedCustomer && selectedCustomer.visits < 3
+                            ? `Necesitas ${3 - selectedCustomer.visits} visita${3 - selectedCustomer.visits > 1 ? 's' : ''} más`
+                            : "Usa tus visitas acumuladas"}
+                        </p>
                       </div>
                     </div>
                   </button>

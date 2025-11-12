@@ -103,6 +103,12 @@ function App() {
   };
 
   const handleRequestRedeemOTP = (customer: Customer) => {
+    // Verificar que el cliente tenga al menos 3 visitas para canjear recompensas
+    if (customer.visits < 3) {
+      toast.error(`Necesitas al menos 3 visitas para canjear recompensas. Tienes ${customer.visits} visita${customer.visits !== 1 ? 's' : ''}`);
+      return;
+    }
+
     // Si el cliente ya fue verificado recientemente (especialmente si es el último cliente registrado),
     // omitir el OTP y ir directo a canjear recompensas
     if (verifiedPhone && customer.phone === verifiedPhone) {
@@ -209,7 +215,7 @@ function App() {
               : undefined
           }
           onRedeemMore={
-            lastCustomer && lastCustomer.visits > 0
+            lastCustomer
               ? () => {
                   if (lastCustomer) {
                     handleRequestRedeemOTP(lastCustomer);
@@ -217,6 +223,12 @@ function App() {
                     setCurrentScreen("register-sale");
                   }
                 }
+              : undefined
+          }
+          redeemDisabled={lastCustomer ? lastCustomer.visits < 3 : false}
+          redeemDisabledMessage={
+            lastCustomer && lastCustomer.visits < 3
+              ? `Necesitas ${3 - lastCustomer.visits} visita${3 - lastCustomer.visits > 1 ? 's' : ''} más para canjear`
               : undefined
           }
           type={
