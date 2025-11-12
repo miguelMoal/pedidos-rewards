@@ -98,8 +98,11 @@ function App() {
     setCustomers(
       customers.map((c) => (c.id === updatedCustomer.id ? updatedCustomer : c))
     );
+    // Actualizar lastCustomer si es el mismo cliente
+    if (lastCustomer && lastCustomer.id === updatedCustomer.id) {
+      setLastCustomer(updatedCustomer);
+    }
     setRedeemCustomer(null);
-    setLastCustomer(null);
   };
 
   const handleRequestRedeemOTP = (customer: Customer) => {

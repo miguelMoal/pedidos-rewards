@@ -8,7 +8,7 @@ import svgPaths from "../imports/svg-s5do7xxfe3";
 import { Confirmation } from "./Confirmation";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { toast } from "sonner";
-import { createVisit, getCustomerVisitsCount } from "../supabase/actions/visitActions";
+import { createVisit, getCustomerVisitsCount, redeemVisits } from "../supabase/actions/visitActions";
 import {
   Dialog,
   DialogContent,
@@ -205,20 +205,33 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
     if (selectedCustomer && selectedRewards.length > 0) {
       setIsLoading(true);
       setLoadingMessage("Procesando canje...");
-      // Simular consulta que podría demorar
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      setIsLoading(false);
-      
-      // Update customer visits
-      const updatedCustomer = { 
-        ...selectedCustomer, 
-        visits: selectedCustomer.visits - getTotalVisitsToRedeem() 
-      };
-      setSelectedCustomer(updatedCustomer);
-      onRedeemRewards(updatedCustomer);
-      
-      // Show redeem confirmation dialog (Figma design)
-      setShowRedeemConfirmation(true);
+
+      try {
+        const visitsToRedeem = getTotalVisitsToRedeem();
+
+        // Marcar las visitas como canjeadas en la base de datos (FIFO - las más antiguas primero)
+        await redeemVisits(selectedCustomer.id, visitsToRedeem);
+
+        // Obtener el número actualizado de visitas disponibles del cliente
+        const visitsCount = await getCustomerVisitsCount(selectedCustomer.id);
+
+        // Update customer visits
+        const updatedCustomer = {
+          ...selectedCustomer,
+          visits: visitsCount,
+        };
+        setSelectedCustomer(updatedCustomer);
+        onRedeemRewards(updatedCustomer);
+
+        setIsLoading(false);
+
+        // Show redeem confirmation dialog (Figma design)
+        setShowRedeemConfirmation(true);
+      } catch (error) {
+        setIsLoading(false);
+        console.error("Error al canjear recompensas:", error);
+        toast.error(error instanceof Error ? error.message : "Error al canjear las recompensas");
+      }
     }
   };
 

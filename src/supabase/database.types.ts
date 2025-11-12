@@ -311,6 +311,7 @@ export type Database = {
           amount: number;
           points: number;
           ticket_number: string | null;
+          redeemed: boolean;
           created_at: string;
         };
         Insert: {
@@ -319,6 +320,7 @@ export type Database = {
           amount: number;
           points?: number;
           ticket_number?: string | null;
+          redeemed?: boolean;
           created_at?: string;
         };
         Update: {
@@ -327,6 +329,7 @@ export type Database = {
           amount?: number;
           points?: number;
           ticket_number?: string | null;
+          redeemed?: boolean;
           created_at?: string;
         };
         Relationships: [

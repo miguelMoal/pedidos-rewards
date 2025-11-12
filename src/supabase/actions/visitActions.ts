@@ -27,6 +27,7 @@ export async function createVisit(
       amount: visit.amount,
       points: visit.points ?? 1,
       ticket_number: visit.ticketNumber || null,
+      redeemed: false,
     } as Database["public"]["Tables"]["visits"]["Insert"])
     .select()
     .single();
@@ -45,7 +46,7 @@ export async function createVisit(
 }
 
 /**
- * Obtiene el número de visitas de un cliente
+ * Obtiene el número de visitas disponibles (no canjeadas) de un cliente
  */
 export async function getCustomerVisitsCount(
   customerId: string
@@ -58,7 +59,8 @@ export async function getCustomerVisitsCount(
   const { count, error } = await supabase
     .from("visits")
     .select("*", { count: "exact", head: true })
-    .eq("customer_id", customerIdNum);
+    .eq("customer_id", customerIdNum)
+    .eq("redeemed", false);
 
   if (error) {
     throw new Error(`Error al obtener visitas: ${error.message}`);
@@ -129,5 +131,58 @@ export async function getAllVisits(
     points: visit.points,
     date: new Date(visit.created_at),
   }));
+}
+
+/**
+ * Marca visitas como canjeadas (FIFO - las más antiguas primero)
+ * @param customerId ID del cliente
+ * @param visitsToRedeem Número de visitas a canjear
+ * @returns IDs de las visitas que fueron marcadas como canjeadas
+ */
+export async function redeemVisits(
+  customerId: string,
+  visitsToRedeem: number
+): Promise<number[]> {
+  const customerIdNum = parseInt(customerId, 10);
+  if (isNaN(customerIdNum)) {
+    throw new Error("ID de cliente inválido");
+  }
+
+  if (visitsToRedeem <= 0) {
+    throw new Error("El número de visitas a canjear debe ser mayor a 0");
+  }
+
+  // Obtener las visitas más antiguas que aún no están canjeadas (FIFO)
+  const { data: visitsToMark, error: selectError } = await supabase
+    .from("visits")
+    .select("id")
+    .eq("customer_id", customerIdNum)
+    .eq("redeemed", false)
+    .order("created_at", { ascending: true })
+    .limit(visitsToRedeem);
+
+  if (selectError) {
+    throw new Error(`Error al obtener visitas: ${selectError.message}`);
+  }
+
+  if (!visitsToMark || visitsToMark.length < visitsToRedeem) {
+    throw new Error(
+      `No hay suficientes visitas disponibles para canjear. Se intentaron canjear ${visitsToRedeem} visitas pero solo hay ${visitsToMark?.length || 0} disponibles.`
+    );
+  }
+
+  // Marcar las visitas como canjeadas
+  const visitIds = visitsToMark.map((visit) => visit.id);
+
+  const { error: updateError } = await supabase
+    .from("visits")
+    .update({ redeemed: true } as Database["public"]["Tables"]["visits"]["Update"])
+    .in("id", visitIds);
+
+  if (updateError) {
+    throw new Error(`Error al marcar visitas como canjeadas: ${updateError.message}`);
+  }
+
+  return visitIds;
 }
 
