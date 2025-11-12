@@ -1,6 +1,7 @@
 import { supabase } from "../initSupabase";
 import type { Customer } from "../../types";
 import type { Database } from "../database.types";
+import { getCustomerVisitsCount } from "./visitActions";
 
 // Función para convertir el género de la app al enum de la BD
 function mapGenderToDatabase(
@@ -76,7 +77,7 @@ export async function createCustomer(
     throw new Error(`Error al crear cliente: ${error.message}`);
   }
 
-  return mapDatabaseCustomerToCustomer(data);
+  return await mapDatabaseCustomerToCustomer(data);
 }
 
 export async function getCustomers(): Promise<Customer[]> {
@@ -89,7 +90,8 @@ export async function getCustomers(): Promise<Customer[]> {
     throw new Error(`Error al obtener clientes: ${error.message}`);
   }
 
-  return data.map(mapDatabaseCustomerToCustomer);
+  // Mapear todos los clientes y obtener sus visitas
+  return Promise.all(data.map(mapDatabaseCustomerToCustomer));
 }
 
 export async function getCustomerByPhone(
@@ -108,7 +110,7 @@ export async function getCustomerByPhone(
     throw new Error(`Error al obtener cliente: ${error.message}`);
   }
 
-  return data ? mapDatabaseCustomerToCustomer(data) : null;
+  return data ? await mapDatabaseCustomerToCustomer(data) : null;
 }
 
 export async function getCustomerByBarcode(
@@ -133,12 +135,15 @@ export async function getCustomerByBarcode(
     throw new Error(`Error al obtener cliente: ${error.message}`);
   }
 
-  return data ? mapDatabaseCustomerToCustomer(data) : null;
+  return data ? await mapDatabaseCustomerToCustomer(data) : null;
 }
 
-function mapDatabaseCustomerToCustomer(
+async function mapDatabaseCustomerToCustomer(
   dbCustomer: Database["public"]["Tables"]["users"]["Row"]
-): Customer {
+): Promise<Customer> {
+  // Obtener el número de visitas del cliente desde la tabla visits
+  const visitsCount = await getCustomerVisitsCount(dbCustomer.id.toString());
+
   return {
     id: dbCustomer.id.toString(),
     phone: dbCustomer.phone,
@@ -149,7 +154,7 @@ function mapDatabaseCustomerToCustomer(
     worksForFederal: dbCustomer.federal_polygon,
     office: undefined, // La tabla users no tiene campo office
     points: 0, // La tabla users no tiene campo points, usar valor por defecto
-    visits: 0, // La tabla users no tiene campo visits, usar valor por defecto
+    visits: visitsCount, // Obtener visitas desde la tabla visits
     createdAt: new Date(dbCustomer.created_at),
   };
 }

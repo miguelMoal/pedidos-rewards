@@ -7,6 +7,8 @@ import image_f69f3e1f121b1ab153665276e885092f953e390c from '../assets/f69f3e1f12
 import svgPaths from "../imports/svg-s5do7xxfe3";
 import { Confirmation } from "./Confirmation";
 import { LoadingSpinner } from "./LoadingSpinner";
+import { toast } from "sonner";
+import { createVisit, getCustomerVisitsCount } from "../supabase/actions/visitActions";
 import {
   Dialog,
   DialogContent,
@@ -251,26 +253,33 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
 
     setIsLoading(true);
     setLoadingMessage("Registrando visita...");
-    // Simular consulta que podría demorar
-    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const amountNum = parseFloat(amount);
+    try {
+      const amountNum = parseFloat(amount);
 
-    const transaction: Transaction = {
-      id: Math.random().toString(36).substr(2, 9),
-      customerId: selectedCustomer.id,
-      amount: amountNum,
-      points: 1, // 1 visita por compra
-      date: new Date(),
-    };
+      // Crear la visita en la base de datos
+      const transaction = await createVisit({
+        customerId: selectedCustomer.id,
+        amount: amountNum,
+        points: 1, // 1 visita por compra
+        ticketNumber: barcode || undefined,
+      });
 
-    const updatedCustomer: Customer = {
-      ...selectedCustomer,
-      visits: selectedCustomer.visits + 1,
-    };
+      // Obtener el número actualizado de visitas del cliente
+      const visitsCount = await getCustomerVisitsCount(selectedCustomer.id);
 
-    setIsLoading(false);
-    onRegisterSale(transaction, updatedCustomer);
+      const updatedCustomer: Customer = {
+        ...selectedCustomer,
+        visits: visitsCount,
+      };
+
+      setIsLoading(false);
+      onRegisterSale(transaction, updatedCustomer);
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error al registrar visita:", error);
+      toast.error(error instanceof Error ? error.message : "Error al registrar la visita");
+    }
   };
 
   const handleDemoFill = () => {
