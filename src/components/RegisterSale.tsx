@@ -315,9 +315,12 @@ export function RegisterSale({
     if (selectedCustomer) {
       onRedeemRewards(selectedCustomer);
     }
-    // Close the redeem confirmation and show completed screen
+    // Cerrar la confirmación del canje y regresar al menú principal
     setShowRedeemConfirmation(false);
-    setShowRedeemCompleted(true);
+    setSelectedRewards([]);
+    setIdentification("");
+    setSelectedCustomer(null);
+    onBack(); // Regresar al menú principal
   };
 
   const handleNextActionRegisterSale = () => {
