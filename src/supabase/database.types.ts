@@ -369,6 +369,42 @@ export type Database = {
           },
         ]
       }
+      redeemable_products: {
+        Row: {
+          id: number
+          name: string
+          description: string | null
+          points: number
+          image_url: string | null
+          icon_name: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          description?: string | null
+          points: number
+          image_url?: string | null
+          icon_name?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          description?: string | null
+          points?: number
+          image_url?: string | null
+          icon_name?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       send_price: {
         Row: {
           created_at: string

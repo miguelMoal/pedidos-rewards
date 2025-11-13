@@ -32,6 +32,7 @@ import {
   getCustomerByPhone,
   getCustomerByBarcode,
 } from "../supabase/actions/customerActions";
+import { getRedeemableProducts } from "../supabase/actions/redeemableProductsActions";
 import {
   Dialog,
   DialogContent,
@@ -49,18 +50,6 @@ interface Reward {
   icon: any;
   image: string;
 }
-
-const REWARDS: Reward[] = [
-  {
-    id: "cafe",
-    name: "Café Premium",
-    description: "Disfruta de nuestro café especial del día",
-    points: 3,
-    icon: Coffee,
-    image:
-      "https://images.unsplash.com/photo-1745611159885-1b7d6d272247?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2ZmZWUlMjBjdXAlMjBwcmVtaXVtfGVufDF8fHx8MTc2MjIxNDg4NHww&ixlib=rb-4.1.0&q=80&w=400",
-  },
-];
 
 interface RegisterSaleProps {
   onBack: () => void;
@@ -124,6 +113,26 @@ export function RegisterSale({
   const [isValidatingIdentification, setIsValidatingIdentification] =
     useState(false);
   const [includesCoffee, setIncludesCoffee] = useState(false); // Por defecto NO incluye café, el usuario debe activarlo
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [isLoadingRewards, setIsLoadingRewards] = useState(false);
+
+  // Cargar productos canjeables desde Supabase
+  useEffect(() => {
+    const loadRewards = async () => {
+      setIsLoadingRewards(true);
+      try {
+        const products = await getRedeemableProducts();
+        setRewards(products);
+      } catch (error) {
+        console.error("Error al cargar productos canjeables:", error);
+        toast.error("Error al cargar productos canjeables");
+      } finally {
+        setIsLoadingRewards(false);
+      }
+    };
+
+    loadRewards();
+  }, []);
 
   // Set pre-selected customer when provided
   useEffect(() => {
@@ -222,7 +231,7 @@ export function RegisterSale({
   const incrementQuantity = (rewardId: string) => {
     if (!selectedCustomer) return;
 
-    const reward = REWARDS.find((r) => r.id === rewardId);
+    const reward = rewards.find((r) => r.id === rewardId);
     if (!reward) return;
 
     setSelectedRewards((prev) => {
@@ -265,7 +274,7 @@ export function RegisterSale({
 
   const getTotalVisitsToRedeem = () => {
     return selectedRewards.reduce((total, { rewardId, quantity }) => {
-      const reward = REWARDS.find((r) => r.id === rewardId);
+      const reward = rewards.find((r) => r.id === rewardId);
       return total + (reward?.points || 0) * quantity;
     }, 0);
   };
@@ -850,19 +859,29 @@ export function RegisterSale({
                   </div>
 
                   <div className="flex justify-center mb-6">
-                    {REWARDS.map((reward) => {
-                      const quantity = getRewardQuantity(reward.id);
-                      const isSelected = quantity > 0;
-                      const currentUsed = getTotalVisitsToRedeem();
-                      const remainingVisits =
-                        selectedCustomer.visits - currentUsed;
-                      const canAddMore = remainingVisits >= reward.points;
-                      const Icon = reward.icon;
+                    {isLoadingRewards ? (
+                      <div className="flex items-center justify-center py-12">
+                        <LoadingSpinner size={48} message="Cargando productos..." />
+                      </div>
+                    ) : rewards.length === 0 ? (
+                      <div className="text-center py-12">
+                        <p className="text-[#4a5565]">No hay productos disponibles</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-5xl">
+                        {rewards.map((reward) => {
+                          const quantity = getRewardQuantity(reward.id);
+                          const isSelected = quantity > 0;
+                          const currentUsed = getTotalVisitsToRedeem();
+                          const remainingVisits =
+                            selectedCustomer.visits - currentUsed;
+                          const canAddMore = remainingVisits >= reward.points;
+                          const Icon = reward.icon;
 
-                      return (
-                        <div
-                          key={reward.id}
-                          className={`relative bg-white rounded-[16px] overflow-hidden border-2 transition-all duration-200 text-left flex flex-col w-full max-w-[280px] ${
+                          return (
+                            <div
+                              key={reward.id}
+                              className={`relative bg-white rounded-[16px] overflow-hidden border-2 transition-all duration-200 text-left flex flex-col w-full ${
                             isSelected
                               ? "border-[#046741] shadow-xl"
                               : "border-gray-200"
@@ -959,9 +978,11 @@ export function RegisterSale({
                               </div>
                             </div>
                           )}
-                        </div>
-                      );
-                    })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Selection Summary */}
@@ -1259,7 +1280,7 @@ export function RegisterSale({
             onComplete={handleNextActionFinish}
             type="redeem"
             redeemedRewards={selectedRewards.map((sr) => {
-              const reward = REWARDS.find((r) => r.id === sr.rewardId);
+              const reward = rewards.find((r) => r.id === sr.rewardId);
               return {
                 rewardId: sr.rewardId,
                 name: reward?.name || "",
