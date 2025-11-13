@@ -29,6 +29,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cashback_transactions: {
+        Row: {
+          cashback_amount: number
+          cashback_percentage: number
+          created_at: string | null
+          customer_id: number
+          customer_visit_id: number
+          id: number
+          purchase_amount: number
+        }
+        Insert: {
+          cashback_amount: number
+          cashback_percentage: number
+          created_at?: string | null
+          customer_id: number
+          customer_visit_id: number
+          id?: number
+          purchase_amount: number
+        }
+        Update: {
+          cashback_amount?: number
+          cashback_percentage?: number
+          created_at?: string | null
+          customer_id?: number
+          customer_visit_id?: number
+          id?: number
+          purchase_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashback_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashback_transactions_customer_visit_id_fkey"
+            columns: ["customer_visit_id"]
+            isOneToOne: false
+            referencedRelation: "customer_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           code: string
@@ -52,6 +97,41 @@ export type Database = {
           is_active?: boolean | null
         }
         Relationships: []
+      }
+      customer_visits: {
+        Row: {
+          amount: number
+          created_at: string | null
+          customer_id: number
+          id: number
+          points: number
+          ticket_number: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          customer_id: number
+          id?: number
+          points?: number
+          ticket_number?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          customer_id?: number
+          id?: number
+          points?: number
+          ticket_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_visits_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       item_booth: {
         Row: {
@@ -252,6 +332,42 @@ export type Database = {
           stock?: number
         }
         Relationships: []
+      }
+      redeemed_visits: {
+        Row: {
+          customer_id: number
+          customer_visit_id: number
+          id: number
+          redeemed_at: string | null
+        }
+        Insert: {
+          customer_id: number
+          customer_visit_id: number
+          id?: number
+          redeemed_at?: string | null
+        }
+        Update: {
+          customer_id?: number
+          customer_visit_id?: number
+          id?: number
+          redeemed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "redeemed_visits_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "redeemed_visits_customer_visit_id_fkey"
+            columns: ["customer_visit_id"]
+            isOneToOne: false
+            referencedRelation: "customer_visits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       send_price: {
         Row: {
