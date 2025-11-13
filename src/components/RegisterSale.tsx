@@ -286,11 +286,12 @@ export function RegisterSale({
           visits: visitsCount,
         };
         setSelectedCustomer(updatedCustomer);
-        onRedeemRewards(updatedCustomer);
 
         setIsLoading(false);
 
         // Show redeem confirmation dialog (Figma design)
+        // No llamar onRedeemRewards aquí para evitar que se cambie la pantalla
+        // Se llamará después cuando el usuario marque como canjeado
         setShowRedeemConfirmation(true);
       } catch (error) {
         setIsLoading(false);
@@ -310,6 +311,10 @@ export function RegisterSale({
   };
 
   const handleMarkAsRedeemed = () => {
+    // Actualizar el estado del cliente en App.tsx después de que el usuario haya visto la confirmación
+    if (selectedCustomer) {
+      onRedeemRewards(selectedCustomer);
+    }
     // Close the redeem confirmation and show completed screen
     setShowRedeemConfirmation(false);
     setShowRedeemCompleted(true);
