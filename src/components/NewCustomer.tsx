@@ -1,5 +1,5 @@
 import image_f69f3e1f121b1ab153665276e885092f953e390c from '../assets/f69f3e1f121b1ab153665276e885092f953e390c.png';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -30,6 +30,13 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
   const [activeInput, setActiveInput] = useState<"phone" | "name" | "office" | null>(null);
   const [showPhoneOnly, setShowPhoneOnly] = useState(!phoneVerified);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Establecer foco automático en el campo de teléfono cuando se muestra la pantalla de ingreso
+  useEffect(() => {
+    if (showPhoneOnly) {
+      setActiveInput("phone");
+    }
+  }, [showPhoneOnly]);
 
   const handleDemoFill = () => {
     if (showPhoneOnly) {
