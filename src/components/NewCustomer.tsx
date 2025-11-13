@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { ArrowLeft, Scan } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { NumericKeypad } from "./NumericKeypad";
 import { AlphabeticKeypad } from "./AlphabeticKeypad";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -25,10 +25,9 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
   const [contactChannel, setContactChannel] = useState<"WhatsApp" | "SMS">("WhatsApp");
   const [name, setName] = useState("");
   const [gender, setGender] = useState<"Masculino" | "Femenino" | "Otro">("Masculino");
-  const [cardBarcode, setCardBarcode] = useState("");
   const [worksForFederal, setWorksForFederal] = useState<boolean>(false);
   const [office, setOffice] = useState("");
-  const [activeInput, setActiveInput] = useState<"phone" | "barcode" | "name" | "office" | null>(null);
+  const [activeInput, setActiveInput] = useState<"phone" | "name" | "office" | null>(null);
   const [showPhoneOnly, setShowPhoneOnly] = useState(!phoneVerified);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,7 +37,6 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
       setActiveInput("phone");
     } else {
       setPhone("5551234567");
-      setCardBarcode("9876543210987");
       setName("Juan García");
       setGender("Masculino");
       setContactChannel("WhatsApp");
@@ -50,8 +48,6 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
   const handleNumberClick = (num: string) => {
     if (activeInput === "phone") {
       if (phone.length < 10) setPhone(phone + num);
-    } else if (activeInput === "barcode") {
-      setCardBarcode(cardBarcode + num);
     }
   };
 
@@ -73,14 +69,12 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
 
   const handleClear = () => {
     if (activeInput === "phone") setPhone("");
-    else if (activeInput === "barcode") setCardBarcode("");
     else if (activeInput === "name") setName("");
     else if (activeInput === "office") setOffice("");
   };
 
   const handleBackspace = () => {
     if (activeInput === "phone") setPhone(phone.slice(0, -1));
-    else if (activeInput === "barcode") setCardBarcode(cardBarcode.slice(0, -1));
     else if (activeInput === "name") setName(name.slice(0, -1));
     else if (activeInput === "office") setOffice(office.slice(0, -1));
   };
@@ -98,7 +92,7 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
         name,
         gender,
         contactChannel,
-        cardBarcode,
+        cardBarcode: "",
         worksForFederal,
         office: worksForFederal ? office : undefined,
         points: 0,
@@ -114,9 +108,7 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
     }
   };
 
-  // Validar que cardBarcode sea un número válido
-  const isCardBarcodeValid = cardBarcode && !isNaN(parseInt(cardBarcode, 10)) && parseInt(cardBarcode, 10) > 0;
-  const isFormValid = phone.length === 10 && name && isCardBarcodeValid && (!worksForFederal || office);
+  const isFormValid = phone.length === 10 && name && (!worksForFederal || office);
 
   return (
     <div className="h-screen bg-[#f8f9fa] flex flex-col">
@@ -268,22 +260,6 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveInput("barcode")}
-                    className={`w-full p-3 rounded-[14px] border transition-all text-left ${
-                      activeInput === "barcode" 
-                        ? "border-[#046741] bg-[#046741]/5" 
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-sm text-[#4a5565]">Código de tu tarjeta rewards (Ingresa el número o escanea) *</label>
-                      <Scan className="w-5 h-5 text-[#4a5565]" />
-                    </div>
-                    <div className="text-[#101828]">{cardBarcode || "_______________"}</div>
-                  </button>
-
                   <div>
                     <label className="block text-sm text-[#4a5565] mb-2">¿Trabajas para el polígono federal?</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -362,7 +338,6 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
                 <p className="text-xs text-[#4a5565] mb-0.5">Ingresando:</p>
                 <p className="text-sm text-[#101828]">
                   {activeInput === "phone" && "Teléfono"}
-                  {activeInput === "barcode" && "Código de Barras"}
                   {activeInput === "name" && "Nombre Completo"}
                   {activeInput === "office" && "Oficina"}
                   {!activeInput && "Selecciona un campo"}
