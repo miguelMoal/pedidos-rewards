@@ -69,6 +69,53 @@ export async function createVisit(
 }
 
 /**
+ * Registra solo cashback sin crear una visita real (para compras sin café)
+ * Crea una visita con points: 0 que no cuenta como visita real
+ */
+export async function createCashbackOnly(
+  params: CreateVisitParams
+): Promise<void> {
+  const customerIdNum = parseInt(params.customerId, 10);
+  if (isNaN(customerIdNum)) {
+    throw new Error("ID de cliente inválido");
+  }
+
+  // Crear una visita con points: 0 que no cuenta como visita real
+  const { data: visitData, error: visitError } = await supabase
+    .from("customer_visits")
+    .insert({
+      customer_id: customerIdNum,
+      amount: params.amount,
+      points: 0, // No cuenta como visita real
+      ticket_number: params.ticketNumber || null,
+    } as Database["public"]["Tables"]["customer_visits"]["Insert"])
+    .select()
+    .single();
+
+  if (visitError) {
+    throw new Error(`Error al crear registro de compra: ${visitError.message}`);
+  }
+
+  // Calcular y registrar el cashback
+  const cashbackAmount = calculateCashback(params.amount);
+
+  const { error: cashbackError } = await supabase
+    .from("cashback_transactions")
+    .insert({
+      customer_id: customerIdNum,
+      customer_visit_id: visitData.id,
+      purchase_amount: params.amount,
+      cashback_percentage: CASHBACK_PERCENTAGE,
+      cashback_amount: cashbackAmount,
+    } as Database["public"]["Tables"]["cashback_transactions"]["Insert"]);
+
+  if (cashbackError) {
+    console.error("Error al registrar cashback:", cashbackError);
+    throw new Error(`Error al registrar cashback: ${cashbackError.message}`);
+  }
+}
+
+/**
  * Obtiene el número de visitas disponibles (no canjeadas) de un cliente
  */
 export async function getCustomerVisitsCount(
@@ -82,7 +129,7 @@ export async function getCustomerVisitsCount(
   // Obtener todas las visitas del cliente
   const { data: allVisits, error: visitsError } = await supabase
     .from("customer_visits")
-    .select("id")
+    .select("id, points")
     .eq("customer_id", customerIdNum);
 
   if (visitsError) {
@@ -110,9 +157,9 @@ export async function getCustomerVisitsCount(
     redeemedVisits?.map((rv) => rv.customer_visit_id) || []
   );
 
-  // Contar visitas no canjeadas
+  // Contar visitas no canjeadas (solo las que tienen points > 0)
   const availableVisits = allVisits.filter(
-    (visit) => !redeemedVisitIds.has(visit.id)
+    (visit) => !redeemedVisitIds.has(visit.id) && visit.points > 0
   );
 
   return availableVisits.length;
@@ -204,7 +251,7 @@ export async function redeemVisits(
   // Obtener todas las visitas del cliente
   const { data: allVisits, error: visitsError } = await supabase
     .from("customer_visits")
-    .select("id")
+    .select("id, points")
     .eq("customer_id", customerIdNum)
     .order("created_at", { ascending: true });
 
@@ -233,9 +280,9 @@ export async function redeemVisits(
     redeemedVisits?.map((rv) => rv.customer_visit_id) || []
   );
 
-  // Filtrar visitas no canjeadas y tomar las más antiguas (FIFO)
+  // Filtrar visitas no canjeadas (solo las que tienen points > 0) y tomar las más antiguas (FIFO)
   const availableVisits = allVisits
-    .filter((visit) => !redeemedVisitIds.has(visit.id))
+    .filter((visit) => !redeemedVisitIds.has(visit.id) && visit.points > 0)
     .slice(0, visitsToRedeem);
 
   if (availableVisits.length < visitsToRedeem) {

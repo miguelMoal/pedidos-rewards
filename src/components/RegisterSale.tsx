@@ -8,7 +8,7 @@ import svgPaths from "../imports/svg-s5do7xxfe3";
 import { Confirmation } from "./Confirmation";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { toast } from "sonner";
-import { createVisit, getCustomerVisitsCount, redeemVisits } from "../supabase/actions/visitActions";
+import { createVisit, createCashbackOnly, getCustomerVisitsCount, redeemVisits } from "../supabase/actions/visitActions";
 import { getCustomerByPhone, getCustomerByBarcode } from "../supabase/actions/customerActions";
 import {
   Dialog,
@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./ui/dialog";
+import { Switch } from "./ui/switch";
 
 interface Reward {
   id: string;
@@ -78,6 +79,7 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
   const [loadingMessage, setLoadingMessage] = useState("");
   const [identificationError, setIdentificationError] = useState<string | null>(null);
   const [isValidatingIdentification, setIsValidatingIdentification] = useState(false);
+  const [includesCoffee, setIncludesCoffee] = useState(true); // Por defecto incluye café
 
   // Set pre-selected customer when provided
   useEffect(() => {
@@ -297,33 +299,61 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
     if (!selectedCustomer || !amount) return;
 
     setIsLoading(true);
-    setLoadingMessage("Registrando visita...");
+    setLoadingMessage(includesCoffee ? "Registrando visita..." : "Registrando cashback...");
 
     try {
       const amountNum = parseFloat(amount);
 
-      // Crear la visita en la base de datos
-      const transaction = await createVisit({
-        customerId: selectedCustomer.id,
-        amount: amountNum,
-        points: 1, // 1 visita por compra
-        ticketNumber: barcode || undefined,
-      });
+      if (includesCoffee) {
+        // Si incluye café: crear visita + cashback
+        const transaction = await createVisit({
+          customerId: selectedCustomer.id,
+          amount: amountNum,
+          points: 1, // 1 visita por compra
+          ticketNumber: barcode || undefined,
+        });
 
-      // Obtener el número actualizado de visitas del cliente
-      const visitsCount = await getCustomerVisitsCount(selectedCustomer.id);
+        // Obtener el número actualizado de visitas del cliente
+        const visitsCount = await getCustomerVisitsCount(selectedCustomer.id);
 
-      const updatedCustomer: Customer = {
-        ...selectedCustomer,
-        visits: visitsCount,
-      };
+        const updatedCustomer: Customer = {
+          ...selectedCustomer,
+          visits: visitsCount,
+        };
 
-      setIsLoading(false);
-      onRegisterSale(transaction, updatedCustomer);
+        setIsLoading(false);
+        onRegisterSale(transaction, updatedCustomer);
+      } else {
+        // Si NO incluye café: solo registrar cashback
+        await createCashbackOnly({
+          customerId: selectedCustomer.id,
+          amount: amountNum,
+          ticketNumber: barcode || undefined,
+        });
+
+        // Crear una transacción ficticia para mantener la compatibilidad con la UI
+        const transaction: Transaction = {
+          id: Date.now().toString(),
+          customerId: selectedCustomer.id,
+          amount: amountNum,
+          points: 0,
+          date: new Date(),
+        };
+
+        // No actualizamos las visitas porque no se registró una visita real
+        const updatedCustomer: Customer = {
+          ...selectedCustomer,
+          visits: selectedCustomer.visits, // Mantener el mismo número de visitas
+        };
+
+        setIsLoading(false);
+        toast.success("Cashback registrado exitosamente");
+        onRegisterSale(transaction, updatedCustomer);
+      }
     } catch (error) {
       setIsLoading(false);
-      console.error("Error al registrar visita:", error);
-      toast.error(error instanceof Error ? error.message : "Error al registrar la visita");
+      console.error("Error al registrar:", error);
+      toast.error(error instanceof Error ? error.message : "Error al registrar la transacción");
     }
   };
 
@@ -923,10 +953,30 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                         {amount || "0.00"}
                       </span>
                     </div>
-                    <div className="bg-[rgba(4,103,65,0.1)] rounded-full px-4 py-1.5">
-                      <p className="text-[#046741]">+1 visita</p>
-                    </div>
+                    {includesCoffee && (
+                      <div className="bg-[rgba(4,103,65,0.1)] rounded-full px-4 py-1.5">
+                        <p className="text-[#046741]">+1 visita</p>
+                      </div>
+                    )}
                   </button>
+
+                  {/* Switch para incluir café */}
+                  <div className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-[14px] border border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <Coffee className="w-5 h-5 text-[#046741]" />
+                      <div>
+                        <p className="text-sm font-medium text-[#101828]">¿Incluye café?</p>
+                        <p className="text-xs text-[#4a5565]">
+                          {includesCoffee ? "Se registrará visita + cashback" : "Solo se registrará cashback"}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={includesCoffee}
+                      onCheckedChange={setIncludesCoffee}
+                      className="data-[state=checked]:bg-[#046741]"
+                    />
+                  </div>
 
                   {/* Barcode Field */}
                   <div className="w-full">
