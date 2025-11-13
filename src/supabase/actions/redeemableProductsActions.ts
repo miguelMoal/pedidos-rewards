@@ -1,8 +1,5 @@
 import { supabase } from "../initSupabase";
-import type { Database } from "../database.types";
 import { Coffee } from "lucide-react";
-
-type RedeemableProductRow = Database["public"]["Tables"]["redeemable_products"]["Row"];
 
 // Mapeo de nombres de iconos a componentes de iconos
 const iconMap: Record<string, typeof Coffee> = {
@@ -32,9 +29,7 @@ export async function getRedeemableProducts(): Promise<RedeemableProduct[]> {
     .order("points", { ascending: true });
 
   if (error) {
-    throw new Error(
-      `Error al obtener productos canjeables: ${error.message}`
-    );
+    throw new Error(`Error al obtener productos canjeables: ${error.message}`);
   }
 
   if (!data || data.length === 0) {
@@ -80,9 +75,7 @@ export async function getRedeemableProductById(
       // No se encontró el producto
       return null;
     }
-    throw new Error(
-      `Error al obtener producto canjeable: ${error.message}`
-    );
+    throw new Error(`Error al obtener producto canjeable: ${error.message}`);
   }
 
   if (!data) {
@@ -100,4 +93,3 @@ export async function getRedeemableProductById(
     image: data.image_url || "",
   };
 }
-

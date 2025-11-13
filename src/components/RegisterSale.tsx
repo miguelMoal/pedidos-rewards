@@ -7,10 +7,6 @@ import {
   Gift,
   ArrowRight,
   Coffee,
-  ShoppingBag,
-  Croissant,
-  CheckCircle2,
-  TrendingUp,
   Plus,
   Minus,
 } from "lucide-react";
@@ -33,13 +29,6 @@ import {
   getCustomerByBarcode,
 } from "../supabase/actions/customerActions";
 import { getRedeemableProducts } from "../supabase/actions/redeemableProductsActions";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "./ui/dialog";
 import { Switch } from "./ui/switch";
 
 interface Reward {
@@ -66,7 +55,6 @@ type Step =
   | "action-menu"
   | "redeem-rewards"
   | "register-amount";
-type InputMethod = "manual" | "scan";
 
 export function RegisterSale({
   onBack,
@@ -101,7 +89,6 @@ export function RegisterSale({
   const [selectedRewards, setSelectedRewards] = useState<
     { rewardId: string; quantity: number }[]
   >([]);
-  const [inputMethod, setInputMethod] = useState<InputMethod>("scan");
   const [showRedeemConfirmation, setShowRedeemConfirmation] = useState(false);
   const [showNextActionDialog, setShowNextActionDialog] = useState(false);
   const [showRedeemCompleted, setShowRedeemCompleted] = useState(false);
@@ -427,13 +414,6 @@ export function RegisterSale({
     setAmount("125.50");
     setBarcode("1234567890123");
     setActiveField("amount");
-  };
-
-  const handleBackFromMenu = () => {
-    setIdentification("");
-    setSelectedCustomer(null);
-    setSelectedRewards([]);
-    setStep("identification");
   };
 
   const handleBackFromRewards = () => {

@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Button } from "./ui/button";
-import { Card } from "./ui/card";
 import { ArrowLeft, Phone, RefreshCw } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { NumericKeypad } from "./NumericKeypad";

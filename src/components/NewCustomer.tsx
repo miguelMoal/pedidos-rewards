@@ -1,8 +1,5 @@
 import image_f69f3e1f121b1ab153665276e885092f953e390c from '../assets/f69f3e1f121b1ab153665276e885092f953e390c.png';
 import { useState, useEffect } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import { ArrowLeft } from "lucide-react";
 import { NumericKeypad } from "./NumericKeypad";
 import { AlphabeticKeypad } from "./AlphabeticKeypad";
@@ -28,7 +25,7 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
   const [worksForFederal, setWorksForFederal] = useState<boolean>(false);
   const [office, setOffice] = useState("");
   const [activeInput, setActiveInput] = useState<"phone" | "name" | "office" | null>(null);
-  const [showPhoneOnly, setShowPhoneOnly] = useState(!phoneVerified);
+  const [showPhoneOnly] = useState(!phoneVerified);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Establecer foco automático en el campo de teléfono cuando se muestra la pantalla de ingreso
