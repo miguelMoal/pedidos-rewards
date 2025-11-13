@@ -26,6 +26,9 @@ function App() {
     useState<Partial<Customer> | null>(null);
   const [redeemCustomer, setRedeemCustomer] = useState<Customer | null>(null);
   const [lastCustomer, setLastCustomer] = useState<Customer | null>(null);
+  const [lastTransaction, setLastTransaction] = useState<Transaction | null>(
+    null
+  );
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
@@ -87,9 +90,16 @@ function App() {
       customers.map((c) => (c.id === updatedCustomer.id ? updatedCustomer : c))
     );
     setLastCustomer(updatedCustomer);
+    setLastTransaction(transaction);
     setConfirmationMessage(`¡Compra Registrada!`);
     setCurrentScreen("confirmation");
-    toast.success(`+1 visita registrada para ${updatedCustomer.name}`);
+
+    // Solo mostrar mensaje de visita si realmente se registró una (points > 0)
+    if (transaction.points > 0) {
+      toast.success(`+1 visita registrada para ${updatedCustomer.name}`);
+    } else {
+      toast.success(`Compra registrada para ${updatedCustomer.name}`);
+    }
   };
 
   const handleRedeemRewards = (customer: Customer) => {
@@ -108,7 +118,11 @@ function App() {
   const handleRequestRedeemOTP = (customer: Customer) => {
     // Verificar que el cliente tenga al menos 3 visitas para canjear recompensas
     if (customer.visits < 3) {
-      toast.error(`Necesitas al menos 3 visitas para canjear recompensas. Tienes ${customer.visits} visita${customer.visits !== 1 ? 's' : ''}`);
+      toast.error(
+        `Necesitas al menos 3 visitas para canjear recompensas. Tienes ${
+          customer.visits
+        } visita${customer.visits !== 1 ? "s" : ""}`
+      );
       return;
     }
 
@@ -168,7 +182,7 @@ function App() {
 
       {currentScreen === "register-sale" && (
         <RegisterSale
-          key={`register-sale-${(redeemCustomer || lastCustomer)?.id || 'new'}`}
+          key={`register-sale-${(redeemCustomer || lastCustomer)?.id || "new"}`}
           onBack={() => {
             setRedeemCustomer(null);
             setLastCustomer(null);
@@ -204,8 +218,19 @@ function App() {
         <Confirmation
           message={confirmationMessage}
           subtitle="¿Qué deseas hacer ahora?"
+          type={
+            confirmationMessage.includes("Compra Registrada")
+              ? lastCustomer && lastCustomer.visits === 0
+                ? "new-customer"
+                : "sale"
+              : undefined
+          }
+          showVisitBadge={
+            lastTransaction?.points ? lastTransaction.points > 0 : false
+          }
           onComplete={() => {
             setLastCustomer(null);
+            setLastTransaction(null);
             setCurrentScreen("menu");
           }}
           onRegisterAnother={
@@ -231,11 +256,10 @@ function App() {
           redeemDisabled={lastCustomer ? lastCustomer.visits < 3 : false}
           redeemDisabledMessage={
             lastCustomer && lastCustomer.visits < 3
-              ? `Necesitas ${3 - lastCustomer.visits} visita${3 - lastCustomer.visits > 1 ? 's' : ''} más para canjear`
+              ? `Necesitas ${3 - lastCustomer.visits} visita${
+                  3 - lastCustomer.visits > 1 ? "s" : ""
+                } más para canjear`
               : undefined
-          }
-          type={
-            lastCustomer && lastCustomer.visits === 0 ? "new-customer" : "sale"
           }
         />
       )}

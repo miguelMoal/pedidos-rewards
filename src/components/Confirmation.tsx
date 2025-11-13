@@ -26,6 +26,7 @@ interface ConfirmationProps {
   onMarkAsRedeemed?: () => void;
   redeemDisabled?: boolean;
   redeemDisabledMessage?: string;
+  showVisitBadge?: boolean;
 }
 
 export function Confirmation({
@@ -40,6 +41,7 @@ export function Confirmation({
   onMarkAsRedeemed,
   redeemDisabled = false,
   redeemDisabledMessage,
+  showVisitBadge = false,
 }: ConfirmationProps) {
   const [countdown, setCountdown] = useState(15);
 
@@ -303,8 +305,8 @@ export function Confirmation({
             </svg>
           </div>
 
-          {/* Visit Badge - Only for sale confirmations */}
-          {type === "sale" && (
+          {/* Visit Badge - Only for sale confirmations when a visit was actually registered */}
+          {type === "sale" && showVisitBadge && (
             <div className="inline-flex items-center gap-1.5 bg-[rgba(4,103,65,0.08)] text-[#046741] px-3 py-1.5 rounded-full mb-4 border border-[rgba(4,103,65,0.2)]">
               <svg
                 className="w-4 h-4"
