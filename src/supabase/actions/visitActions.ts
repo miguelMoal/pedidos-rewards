@@ -1,6 +1,10 @@
 import { supabase } from "../initSupabase";
 import type { Transaction } from "../../types";
 import type { Database } from "../database.types";
+import {
+  CASHBACK_PERCENTAGE,
+  calculateCashback,
+} from "../../constants/cashback";
 
 export interface CreateVisitParams {
   customerId: string;
@@ -10,7 +14,7 @@ export interface CreateVisitParams {
 }
 
 /**
- * Crea una nueva visita en la base de datos
+ * Crea una nueva visita en la base de datos y registra el cashback
  */
 export async function createVisit(
   visit: CreateVisitParams
@@ -20,28 +24,47 @@ export async function createVisit(
     throw new Error("ID de cliente inválido");
   }
 
-  const { data, error } = await supabase
-    .from("visits")
+  // Crear la visita en customer_visits
+  const { data: visitData, error: visitError } = await supabase
+    .from("customer_visits")
     .insert({
       customer_id: customerIdNum,
       amount: visit.amount,
       points: visit.points ?? 1,
       ticket_number: visit.ticketNumber || null,
-      redeemed: false,
-    } as Database["public"]["Tables"]["visits"]["Insert"])
+    } as Database["public"]["Tables"]["customer_visits"]["Insert"])
     .select()
     .single();
 
-  if (error) {
-    throw new Error(`Error al crear visita: ${error.message}`);
+  if (visitError) {
+    throw new Error(`Error al crear visita: ${visitError.message}`);
+  }
+
+  // Calcular y registrar el cashback
+  const cashbackAmount = calculateCashback(visit.amount);
+
+  const { error: cashbackError } = await supabase
+    .from("cashback_transactions")
+    .insert({
+      customer_id: customerIdNum,
+      customer_visit_id: visitData.id,
+      purchase_amount: visit.amount,
+      cashback_percentage: CASHBACK_PERCENTAGE,
+      cashback_amount: cashbackAmount,
+    } as Database["public"]["Tables"]["cashback_transactions"]["Insert"]);
+
+  if (cashbackError) {
+    console.error("Error al registrar cashback:", cashbackError);
+    // No lanzamos error aquí porque la visita ya fue creada
+    // Solo registramos el error en consola
   }
 
   return {
-    id: data.id.toString(),
-    customerId: data.customer_id.toString(),
-    amount: typeof data.amount === "number" ? data.amount : parseFloat(data.amount.toString()),
-    points: data.points,
-    date: new Date(data.created_at),
+    id: visitData.id.toString(),
+    customerId: visitData.customer_id.toString(),
+    amount: visitData.amount,
+    points: visitData.points,
+    date: new Date(visitData.created_at || new Date()),
   };
 }
 
@@ -56,17 +79,43 @@ export async function getCustomerVisitsCount(
     throw new Error("ID de cliente inválido");
   }
 
-  const { count, error } = await supabase
-    .from("visits")
-    .select("*", { count: "exact", head: true })
-    .eq("customer_id", customerIdNum)
-    .eq("redeemed", false);
+  // Obtener todas las visitas del cliente
+  const { data: allVisits, error: visitsError } = await supabase
+    .from("customer_visits")
+    .select("id")
+    .eq("customer_id", customerIdNum);
 
-  if (error) {
-    throw new Error(`Error al obtener visitas: ${error.message}`);
+  if (visitsError) {
+    throw new Error(`Error al obtener visitas: ${visitsError.message}`);
   }
 
-  return count ?? 0;
+  if (!allVisits || allVisits.length === 0) {
+    return 0;
+  }
+
+  // Obtener las visitas canjeadas
+  const visitIds = allVisits.map((v) => v.id);
+  const { data: redeemedVisits, error: redeemedError } = await supabase
+    .from("redeemed_visits")
+    .select("customer_visit_id")
+    .in("customer_visit_id", visitIds);
+
+  if (redeemedError) {
+    throw new Error(
+      `Error al obtener visitas canjeadas: ${redeemedError.message}`
+    );
+  }
+
+  const redeemedVisitIds = new Set(
+    redeemedVisits?.map((rv) => rv.customer_visit_id) || []
+  );
+
+  // Contar visitas no canjeadas
+  const availableVisits = allVisits.filter(
+    (visit) => !redeemedVisitIds.has(visit.id)
+  );
+
+  return availableVisits.length;
 }
 
 /**
@@ -81,7 +130,7 @@ export async function getCustomerVisits(
   }
 
   const { data, error } = await supabase
-    .from("visits")
+    .from("customer_visits")
     .select("*")
     .eq("customer_id", customerIdNum)
     .order("created_at", { ascending: false });
@@ -90,12 +139,12 @@ export async function getCustomerVisits(
     throw new Error(`Error al obtener visitas: ${error.message}`);
   }
 
-  return data.map((visit) => ({
+  return (data || []).map((visit) => ({
     id: visit.id.toString(),
     customerId: visit.customer_id.toString(),
-    amount: typeof visit.amount === "number" ? visit.amount : parseFloat(visit.amount.toString()),
+    amount: visit.amount,
     points: visit.points,
-    date: new Date(visit.created_at),
+    date: new Date(visit.created_at || new Date()),
   }));
 }
 
@@ -107,7 +156,7 @@ export async function getAllVisits(
   offset?: number
 ): Promise<Transaction[]> {
   let query = supabase
-    .from("visits")
+    .from("customer_visits")
     .select("*")
     .order("created_at", { ascending: false });
 
@@ -124,12 +173,12 @@ export async function getAllVisits(
     throw new Error(`Error al obtener visitas: ${error.message}`);
   }
 
-  return data.map((visit) => ({
+  return (data || []).map((visit) => ({
     id: visit.id.toString(),
     customerId: visit.customer_id.toString(),
-    amount: typeof visit.amount === "number" ? visit.amount : parseFloat(visit.amount.toString()),
+    amount: visit.amount,
     points: visit.points,
-    date: new Date(visit.created_at),
+    date: new Date(visit.created_at || new Date()),
   }));
 }
 
@@ -152,37 +201,64 @@ export async function redeemVisits(
     throw new Error("El número de visitas a canjear debe ser mayor a 0");
   }
 
-  // Obtener las visitas más antiguas que aún no están canjeadas (FIFO)
-  const { data: visitsToMark, error: selectError } = await supabase
-    .from("visits")
+  // Obtener todas las visitas del cliente
+  const { data: allVisits, error: visitsError } = await supabase
+    .from("customer_visits")
     .select("id")
     .eq("customer_id", customerIdNum)
-    .eq("redeemed", false)
-    .order("created_at", { ascending: true })
-    .limit(visitsToRedeem);
+    .order("created_at", { ascending: true });
 
-  if (selectError) {
-    throw new Error(`Error al obtener visitas: ${selectError.message}`);
+  if (visitsError) {
+    throw new Error(`Error al obtener visitas: ${visitsError.message}`);
   }
 
-  if (!visitsToMark || visitsToMark.length < visitsToRedeem) {
+  if (!allVisits || allVisits.length === 0) {
+    throw new Error("No hay visitas disponibles para canjear");
+  }
+
+  // Obtener las visitas ya canjeadas
+  const allVisitIds = allVisits.map((v) => v.id);
+  const { data: redeemedVisits, error: redeemedError } = await supabase
+    .from("redeemed_visits")
+    .select("customer_visit_id")
+    .in("customer_visit_id", allVisitIds);
+
+  if (redeemedError) {
     throw new Error(
-      `No hay suficientes visitas disponibles para canjear. Se intentaron canjear ${visitsToRedeem} visitas pero solo hay ${visitsToMark?.length || 0} disponibles.`
+      `Error al obtener visitas canjeadas: ${redeemedError.message}`
     );
   }
 
-  // Marcar las visitas como canjeadas
-  const visitIds = visitsToMark.map((visit) => visit.id);
+  const redeemedVisitIds = new Set(
+    redeemedVisits?.map((rv) => rv.customer_visit_id) || []
+  );
 
-  const { error: updateError } = await supabase
-    .from("visits")
-    .update({ redeemed: true } as Database["public"]["Tables"]["visits"]["Update"])
-    .in("id", visitIds);
+  // Filtrar visitas no canjeadas y tomar las más antiguas (FIFO)
+  const availableVisits = allVisits
+    .filter((visit) => !redeemedVisitIds.has(visit.id))
+    .slice(0, visitsToRedeem);
 
-  if (updateError) {
-    throw new Error(`Error al marcar visitas como canjeadas: ${updateError.message}`);
+  if (availableVisits.length < visitsToRedeem) {
+    throw new Error(
+      `No hay suficientes visitas disponibles para canjear. Se intentaron canjear ${visitsToRedeem} visitas pero solo hay ${availableVisits.length} disponibles.`
+    );
   }
 
-  return visitIds;
-}
+  // Registrar las visitas como canjeadas en redeemed_visits
+  const visitIdsToRedeem = availableVisits.map((visit) => visit.id);
 
+  const { error: insertError } = await supabase.from("redeemed_visits").insert(
+    visitIdsToRedeem.map((visitId) => ({
+      customer_id: customerIdNum,
+      customer_visit_id: visitId,
+    })) as Database["public"]["Tables"]["redeemed_visits"]["Insert"][]
+  );
+
+  if (insertError) {
+    throw new Error(
+      `Error al marcar visitas como canjeadas: ${insertError.message}`
+    );
+  }
+
+  return visitIdsToRedeem;
+}
