@@ -1,15 +1,37 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Scan, User, CreditCard, Gift, ArrowRight, Coffee, ShoppingBag, Croissant, CheckCircle2, TrendingUp, Plus, Minus } from "lucide-react";
+import {
+  ArrowLeft,
+  Scan,
+  User,
+  CreditCard,
+  Gift,
+  ArrowRight,
+  Coffee,
+  ShoppingBag,
+  Croissant,
+  CheckCircle2,
+  TrendingUp,
+  Plus,
+  Minus,
+} from "lucide-react";
 import { NumericKeypad } from "./NumericKeypad";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import type { Customer, Transaction } from "../types";
-import image_f69f3e1f121b1ab153665276e885092f953e390c from '../assets/f69f3e1f121b1ab153665276e885092f953e390c.png';
+import image_f69f3e1f121b1ab153665276e885092f953e390c from "../assets/f69f3e1f121b1ab153665276e885092f953e390c.png";
 import svgPaths from "../imports/svg-s5do7xxfe3";
 import { Confirmation } from "./Confirmation";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { toast } from "sonner";
-import { createVisit, createCashbackOnly, getCustomerVisitsCount, redeemVisits } from "../supabase/actions/visitActions";
-import { getCustomerByPhone, getCustomerByBarcode } from "../supabase/actions/customerActions";
+import {
+  createVisit,
+  createCashbackOnly,
+  getCustomerVisitsCount,
+  redeemVisits,
+} from "../supabase/actions/visitActions";
+import {
+  getCustomerByPhone,
+  getCustomerByBarcode,
+} from "../supabase/actions/customerActions";
 import {
   Dialog,
   DialogContent,
@@ -29,14 +51,15 @@ interface Reward {
 }
 
 const REWARDS: Reward[] = [
-  { 
-    id: "cafe", 
-    name: "Café Premium", 
+  {
+    id: "cafe",
+    name: "Café Premium",
     description: "Disfruta de nuestro café especial del día",
-    points: 3, 
+    points: 3,
     icon: Coffee,
-    image: "https://images.unsplash.com/photo-1745611159885-1b7d6d272247?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2ZmZWUlMjBjdXAlMjBwcmVtaXVtfGVufDF8fHx8MTc2MjIxNDg4NHww&ixlib=rb-4.1.0&q=80&w=400"
-  }
+    image:
+      "https://images.unsplash.com/photo-1745611159885-1b7d6d272247?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2ZmZWUlMjBjdXAlMjBwcmVtaXVtfGVufDF8fHx8MTc2MjIxNDg4NHww&ixlib=rb-4.1.0&q=80&w=400",
+  },
 ];
 
 interface RegisterSaleProps {
@@ -49,10 +72,22 @@ interface RegisterSaleProps {
   goDirectToRedeem?: boolean;
 }
 
-type Step = "identification" | "action-menu" | "redeem-rewards" | "register-amount";
+type Step =
+  | "identification"
+  | "action-menu"
+  | "redeem-rewards"
+  | "register-amount";
 type InputMethod = "manual" | "scan";
 
-export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemRewards, onRequestRedeemOTP, preSelectedCustomer, goDirectToRedeem }: RegisterSaleProps) {
+export function RegisterSale({
+  onBack,
+  customers,
+  onRegisterSale,
+  onRedeemRewards,
+  onRequestRedeemOTP,
+  preSelectedCustomer,
+  goDirectToRedeem,
+}: RegisterSaleProps) {
   // Paso inicial: si hay cliente preseleccionado, ir al menú de acciones (o directo a canjear si goDirectToRedeem)
   const getInitialStep = (): Step => {
     if (goDirectToRedeem && preSelectedCustomer) {
@@ -63,23 +98,32 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
     }
     return "identification";
   };
-  
+
   const [step, setStep] = useState<Step>(() => getInitialStep());
   const [identification, setIdentification] = useState("");
   const [amount, setAmount] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [activeField, setActiveField] = useState<"amount" | "barcode">("amount");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(preSelectedCustomer || null);
-  const [selectedRewards, setSelectedRewards] = useState<{ rewardId: string; quantity: number }[]>([]);
+  const [activeField, setActiveField] = useState<"amount" | "barcode">(
+    "amount"
+  );
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    preSelectedCustomer || null
+  );
+  const [selectedRewards, setSelectedRewards] = useState<
+    { rewardId: string; quantity: number }[]
+  >([]);
   const [inputMethod, setInputMethod] = useState<InputMethod>("scan");
   const [showRedeemConfirmation, setShowRedeemConfirmation] = useState(false);
   const [showNextActionDialog, setShowNextActionDialog] = useState(false);
   const [showRedeemCompleted, setShowRedeemCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
-  const [identificationError, setIdentificationError] = useState<string | null>(null);
-  const [isValidatingIdentification, setIsValidatingIdentification] = useState(false);
-  const [includesCoffee, setIncludesCoffee] = useState(true); // Por defecto incluye café
+  const [identificationError, setIdentificationError] = useState<string | null>(
+    null
+  );
+  const [isValidatingIdentification, setIsValidatingIdentification] =
+    useState(false);
+  const [includesCoffee, setIncludesCoffee] = useState(false); // Por defecto NO incluye café, el usuario debe activarlo
 
   // Set pre-selected customer when provided
   useEffect(() => {
@@ -112,7 +156,7 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
   // Formato esperado: números solamente, entre 10 y 15 dígitos (puede incluir código de país)
   const isValidPhoneNumber = (phone: string): boolean => {
     // Remover espacios, guiones y otros caracteres no numéricos
-    const cleaned = phone.replace(/\D/g, '');
+    const cleaned = phone.replace(/\D/g, "");
     // Validar que tenga entre 10 y 15 dígitos (formato internacional)
     return cleaned.length >= 10 && cleaned.length <= 15;
   };
@@ -121,7 +165,7 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
   // Formato esperado: números solamente, al menos 4 dígitos
   const isValidBarcode = (barcode: string): boolean => {
     // Remover espacios y otros caracteres no numéricos
-    const cleaned = barcode.replace(/\D/g, '');
+    const cleaned = barcode.replace(/\D/g, "");
     // Validar que tenga al menos 4 dígitos
     return cleaned.length >= 4;
   };
@@ -177,21 +221,19 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
 
   const incrementQuantity = (rewardId: string) => {
     if (!selectedCustomer) return;
-    
-    const reward = REWARDS.find(r => r.id === rewardId);
+
+    const reward = REWARDS.find((r) => r.id === rewardId);
     if (!reward) return;
-    
-    setSelectedRewards(prev => {
-      const existing = prev.find(r => r.rewardId === rewardId);
+
+    setSelectedRewards((prev) => {
+      const existing = prev.find((r) => r.rewardId === rewardId);
       const currentUsed = getTotalVisitsToRedeem();
       const remainingVisits = selectedCustomer.visits - currentUsed;
-      
+
       if (remainingVisits >= reward.points) {
         if (existing) {
-          return prev.map(r => 
-            r.rewardId === rewardId 
-              ? { ...r, quantity: r.quantity + 1 }
-              : r
+          return prev.map((r) =>
+            r.rewardId === rewardId ? { ...r, quantity: r.quantity + 1 } : r
           );
         } else {
           return [...prev, { rewardId, quantity: 1 }];
@@ -202,30 +244,28 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
   };
 
   const decrementQuantity = (rewardId: string) => {
-    setSelectedRewards(prev => {
-      const existing = prev.find(r => r.rewardId === rewardId);
+    setSelectedRewards((prev) => {
+      const existing = prev.find((r) => r.rewardId === rewardId);
       if (!existing) return prev;
-      
+
       if (existing.quantity === 1) {
-        return prev.filter(r => r.rewardId !== rewardId);
+        return prev.filter((r) => r.rewardId !== rewardId);
       } else {
-        return prev.map(r => 
-          r.rewardId === rewardId 
-            ? { ...r, quantity: r.quantity - 1 }
-            : r
+        return prev.map((r) =>
+          r.rewardId === rewardId ? { ...r, quantity: r.quantity - 1 } : r
         );
       }
     });
   };
 
   const getRewardQuantity = (rewardId: string) => {
-    const reward = selectedRewards.find(r => r.rewardId === rewardId);
+    const reward = selectedRewards.find((r) => r.rewardId === rewardId);
     return reward?.quantity || 0;
   };
 
   const getTotalVisitsToRedeem = () => {
     return selectedRewards.reduce((total, { rewardId, quantity }) => {
-      const reward = REWARDS.find(r => r.id === rewardId);
+      const reward = REWARDS.find((r) => r.id === rewardId);
       return total + (reward?.points || 0) * quantity;
     }, 0);
   };
@@ -259,7 +299,11 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
       } catch (error) {
         setIsLoading(false);
         console.error("Error al canjear recompensas:", error);
-        toast.error(error instanceof Error ? error.message : "Error al canjear las recompensas");
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Error al canjear las recompensas"
+        );
       }
     }
   };
@@ -299,7 +343,9 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
     if (!selectedCustomer || !amount) return;
 
     setIsLoading(true);
-    setLoadingMessage(includesCoffee ? "Registrando visita..." : "Registrando cashback...");
+    setLoadingMessage(
+      includesCoffee ? "Registrando visita..." : "Registrando cashback..."
+    );
 
     try {
       const amountNum = parseFloat(amount);
@@ -353,7 +399,11 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
     } catch (error) {
       setIsLoading(false);
       console.error("Error al registrar:", error);
-      toast.error(error instanceof Error ? error.message : "Error al registrar la transacción");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Error al registrar la transacción"
+      );
     }
   };
 
@@ -417,7 +467,9 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
 
   const handleContinueIdentification = async () => {
     if (!identification || identification.trim().length === 0) {
-      setIdentificationError("Por favor ingresa un código o número de teléfono");
+      setIdentificationError(
+        "Por favor ingresa un código o número de teléfono"
+      );
       return;
     }
 
@@ -426,7 +478,9 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
 
     // Validar formato
     if (!isValidIdentificationFormat(identification)) {
-      setIdentificationError("El formato ingresado no es válido. Ingresa un número de teléfono (10-15 dígitos) o un código de tarjeta (mínimo 4 dígitos)");
+      setIdentificationError(
+        "El formato ingresado no es válido. Ingresa un número de teléfono (10-15 dígitos) o un código de tarjeta (mínimo 4 dígitos)"
+      );
       return;
     }
 
@@ -437,7 +491,7 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
       let customer: Customer | null = null;
 
       // Limpiar el identificador (solo números)
-      const cleanedIdentification = identification.replace(/\D/g, '');
+      const cleanedIdentification = identification.replace(/\D/g, "");
 
       // Intentar buscar por teléfono primero (si tiene 10-15 dígitos)
       if (isValidPhoneNumber(identification)) {
@@ -455,12 +509,18 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
         setStep("action-menu");
         toast.success(`Cliente encontrado: ${customer.name}`);
       } else {
-        setIdentificationError("Cliente no encontrado. Verifica el código o teléfono ingresado");
+        setIdentificationError(
+          "Cliente no encontrado. Verifica el código o teléfono ingresado"
+        );
         setSelectedCustomer(null);
       }
     } catch (error) {
       console.error("Error al buscar cliente:", error);
-      setIdentificationError(error instanceof Error ? error.message : "Error al verificar el cliente. Por favor intenta de nuevo");
+      setIdentificationError(
+        error instanceof Error
+          ? error.message
+          : "Error al verificar el cliente. Por favor intenta de nuevo"
+      );
       setSelectedCustomer(null);
     } finally {
       setIsValidatingIdentification(false);
@@ -471,10 +531,14 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
   const handleGoToRedeem = () => {
     // No permitir canjear si el cliente tiene menos de 3 visitas
     if (!selectedCustomer || selectedCustomer.visits < 3) {
-      toast.error(`Necesitas al menos 3 visitas para canjear recompensas. Tienes ${selectedCustomer?.visits || 0} visita${selectedCustomer?.visits !== 1 ? 's' : ''}`);
+      toast.error(
+        `Necesitas al menos 3 visitas para canjear recompensas. Tienes ${
+          selectedCustomer?.visits || 0
+        } visita${selectedCustomer?.visits !== 1 ? "s" : ""}`
+      );
       return;
     }
-    
+
     if (onRequestRedeemOTP && selectedCustomer) {
       onRequestRedeemOTP(selectedCustomer);
     } else {
@@ -491,7 +555,7 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-6 py-3">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <button 
+          <button
             onClick={handleBackFromHeader}
             className="flex items-center gap-2 text-[#101828] hover:text-[#046741] transition-colors active:scale-[0.98]"
           >
@@ -499,7 +563,7 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
             <span>Volver</span>
           </button>
           <div className="flex items-center gap-3">
-            <ImageWithFallback 
+            <ImageWithFallback
               src={image_f69f3e1f121b1ab153665276e885092f953e390c}
               alt="Rewards FA Logo"
               className="w-10 h-10 rounded-full object-cover"
@@ -530,14 +594,15 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
               Demo
             </button>
           )}
-          {step !== "identification" && step !== "register-amount" && <div className="w-16"></div>}
+          {step !== "identification" && step !== "register-amount" && (
+            <div className="w-16"></div>
+          )}
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <div className="max-w-7xl mx-auto h-full p-[24px]">
-          
           {/* Step 1: Identification */}
           {step === "identification" && (
             <div className="grid grid-cols-12 gap-3 h-full">
@@ -545,26 +610,42 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                 <div className="w-full max-w-lg">
                   <div className="bg-white rounded-[16px] border border-gray-200 shadow-sm text-center p-[24px]">
                     <button
-                      onClick={() => {/* Trigger scan */}}
+                      onClick={() => {
+                        /* Trigger scan */
+                      }}
                       className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#046741]/10 to-[#046741]/5 mb-4 border border-[#046741]/20 hover:border-[#046741]/40 hover:bg-[#046741]/10 transition-all cursor-pointer group active:scale-[0.98]"
                     >
                       <Scan className="w-8 h-8 text-[#046741] group-hover:scale-110 transition-transform" />
                     </button>
-                    <h3 className="text-[#101828] mb-2">Identifica tu cuenta</h3>
-                    <p className="text-[#4a5565] mb-4">Escanea tu tarjeta o ingresa tu número de teléfono</p>
-                    
+                    <h3 className="text-[#101828] mb-2">
+                      Identifica tu cuenta
+                    </h3>
+                    <p className="text-[#4a5565] mb-4">
+                      Escanea tu tarjeta o ingresa tu número de teléfono
+                    </p>
+
                     <div className="bg-gray-50 rounded-[14px] p-4 border border-gray-200 mb-4">
-                      <p className="text-sm text-[#4a5565] mb-2">Código / Teléfono</p>
+                      <p className="text-sm text-[#4a5565] mb-2">
+                        Código / Teléfono
+                      </p>
                       <p className="text-2xl text-[#101828] tracking-wide min-h-[36px]">
                         {identification || "_______________"}
                       </p>
                     </div>
-                    
+
                     <button
                       onClick={handleContinueIdentification}
-                      disabled={!identification || identification.trim().length === 0 || isValidatingIdentification || isLoading}
+                      disabled={
+                        !identification ||
+                        identification.trim().length === 0 ||
+                        isValidatingIdentification ||
+                        isLoading
+                      }
                       className={`w-full h-12 rounded-[14px] transition-all flex items-center justify-center gap-2 ${
-                        identification && identification.trim().length > 0 && !isValidatingIdentification && !isLoading
+                        identification &&
+                        identification.trim().length > 0 &&
+                        !isValidatingIdentification &&
+                        !isLoading
                           ? "bg-[#046741] hover:bg-[#035230] text-white shadow-lg hover:shadow-xl active:scale-[0.98]"
                           : "bg-gray-200 text-gray-400 cursor-not-allowed"
                       }`}
@@ -581,11 +662,13 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                       )}
                     </button>
                   </div>
-                  
+
                   {identificationError && (
                     <div className="mt-4 bg-red-50 border-2 border-red-200 rounded-[14px] p-4 text-center">
                       <p className="text-red-900 font-medium">Error</p>
-                      <p className="text-sm text-red-700 mt-1">{identificationError}</p>
+                      <p className="text-sm text-red-700 mt-1">
+                        {identificationError}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -596,7 +679,7 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                   <p className="text-xs text-[#4a5565] mb-0.5">Ingresando:</p>
                   <p className="text-sm text-[#101828]">Código o Teléfono</p>
                 </div>
-                
+
                 <div className="flex-1 min-h-0 flex items-center justify-center">
                   <div className="w-full max-w-sm">
                     <NumericKeypad
@@ -619,12 +702,18 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#046741]/10 to-[#046741]/5 mb-3 border-2 border-[#046741]/20">
                     <User className="w-8 h-8 text-[#046741]" />
                   </div>
-                  <h2 className="text-[#101828] text-xl mb-2 font-bold">¡Hola, {selectedCustomer.name}!</h2>
-                  <p className="text-[#4a5565] text-base mb-3">¿Qué deseas hacer hoy?</p>
-                  
+                  <h2 className="text-[#101828] text-xl mb-2 font-bold">
+                    ¡Hola, {selectedCustomer.name}!
+                  </h2>
+                  <p className="text-[#4a5565] text-base mb-3">
+                    ¿Qué deseas hacer hoy?
+                  </p>
+
                   <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm rounded-full px-5 py-2 border border-gray-200">
                     <Gift className="w-5 h-5 text-[#046741]" />
-                    <p className="text-sm text-[#046741]">Tienes {selectedCustomer.visits} visitas acumuladas</p>
+                    <p className="text-sm text-[#046741]">
+                      Tienes {selectedCustomer.visits} visitas acumuladas
+                    </p>
                   </div>
                 </div>
 
@@ -637,18 +726,22 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                   >
                     {/* Decorative background */}
                     <div className="absolute inset-0 bg-gradient-to-br from-[#046741]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    
+
                     <div className="relative flex flex-col items-center gap-6">
                       <div className="bg-gradient-to-br from-[#046741] to-[#035230] rounded-2xl p-5 shadow-lg group-hover:scale-110 transition-transform">
                         <CreditCard className="w-12 h-12 text-white" />
                       </div>
                       <div className="text-center">
-                        <p className="text-[#101828] text-[17px] mb-1">Registrar Visita</p>
-                        <p className="text-xs text-[#4a5565]">Acumula visitas con cada visita</p>
+                        <p className="text-[#101828] text-[17px] mb-1">
+                          Registrar Visita
+                        </p>
+                        <p className="text-xs text-[#4a5565]">
+                          Acumula visitas con cada visita
+                        </p>
                       </div>
                     </div>
                   </button>
-                  
+
                   {/* Canjear Recompensas */}
                   <button
                     onClick={handleGoToRedeem}
@@ -663,32 +756,44 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                     {selectedCustomer && selectedCustomer.visits >= 3 && (
                       <div className="absolute inset-0 bg-gradient-to-br from-[#046741]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     )}
-                    
+
                     <div className="relative flex flex-col items-center gap-6">
-                      <div className={`rounded-2xl p-5 shadow-lg transition-transform ${
-                        selectedCustomer && selectedCustomer.visits >= 3
-                          ? "bg-gradient-to-br from-[#046741] to-[#035230] group-hover:scale-110"
-                          : "bg-gray-300"
-                      }`}>
-                        <Gift className={`w-12 h-12 ${
+                      <div
+                        className={`rounded-2xl p-5 shadow-lg transition-transform ${
                           selectedCustomer && selectedCustomer.visits >= 3
-                            ? "text-white"
-                            : "text-gray-500"
-                        }`} />
+                            ? "bg-gradient-to-br from-[#046741] to-[#035230] group-hover:scale-110"
+                            : "bg-gray-300"
+                        }`}
+                      >
+                        <Gift
+                          className={`w-12 h-12 ${
+                            selectedCustomer && selectedCustomer.visits >= 3
+                              ? "text-white"
+                              : "text-gray-500"
+                          }`}
+                        />
                       </div>
                       <div className="text-center">
-                        <p className={`text-[17px] mb-1 ${
-                          selectedCustomer && selectedCustomer.visits >= 3
-                            ? "text-[#101828]"
-                            : "text-gray-500"
-                        }`}>Canjear Recompensas</p>
-                        <p className={`text-xs ${
-                          selectedCustomer && selectedCustomer.visits >= 3
-                            ? "text-[#4a5565]"
-                            : "text-gray-400"
-                        }`}>
+                        <p
+                          className={`text-[17px] mb-1 ${
+                            selectedCustomer && selectedCustomer.visits >= 3
+                              ? "text-[#101828]"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          Canjear Recompensas
+                        </p>
+                        <p
+                          className={`text-xs ${
+                            selectedCustomer && selectedCustomer.visits >= 3
+                              ? "text-[#4a5565]"
+                              : "text-gray-400"
+                          }`}
+                        >
                           {selectedCustomer && selectedCustomer.visits < 3
-                            ? `Necesitas ${3 - selectedCustomer.visits} visita${3 - selectedCustomer.visits > 1 ? 's' : ''} más`
+                            ? `Necesitas ${3 - selectedCustomer.visits} visita${
+                                3 - selectedCustomer.visits > 1 ? "s" : ""
+                              } más`
                             : "Usa tus visitas acumuladas"}
                         </p>
                       </div>
@@ -721,30 +826,39 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                     </div>
                     <div>
                       <p className="text-[#101828]">{selectedCustomer.name}</p>
-                      <p className="text-sm text-[#4a5565]">{selectedCustomer.phone}</p>
+                      <p className="text-sm text-[#4a5565]">
+                        {selectedCustomer.phone}
+                      </p>
                     </div>
                   </div>
                   <div className="bg-white rounded-full px-5 py-2 border-2 border-[#046741]">
-                    <span className="text-[#046741]">{selectedCustomer.visits} visitas</span>
+                    <span className="text-[#046741]">
+                      {selectedCustomer.visits} visitas
+                    </span>
                   </div>
                 </div>
 
                 {/* Available Rewards Catalog */}
                 <div className="bg-white rounded-2xl p-4 pr-3 border border-gray-100 shadow-sm mb-3 flex-1 min-h-0 overflow-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                   <div className="text-center mb-4">
-                    <h3 className="text-[#101828] mb-1">Selecciona tus recompensas</h3>
-                    <p className="text-sm text-[#4a5565]">Toca las tarjetas para seleccionar</p>
+                    <h3 className="text-[#101828] mb-1">
+                      Selecciona tus recompensas
+                    </h3>
+                    <p className="text-sm text-[#4a5565]">
+                      Toca las tarjetas para seleccionar
+                    </p>
                   </div>
-                  
+
                   <div className="flex justify-center mb-6">
                     {REWARDS.map((reward) => {
                       const quantity = getRewardQuantity(reward.id);
                       const isSelected = quantity > 0;
                       const currentUsed = getTotalVisitsToRedeem();
-                      const remainingVisits = selectedCustomer.visits - currentUsed;
+                      const remainingVisits =
+                        selectedCustomer.visits - currentUsed;
                       const canAddMore = remainingVisits >= reward.points;
                       const Icon = reward.icon;
-                      
+
                       return (
                         <div
                           key={reward.id}
@@ -762,31 +876,41 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                           )}
 
                           {/* Product Image - Fixed height */}
-                          <div className={`relative h-[140px] overflow-hidden flex-shrink-0 flex items-center justify-center transition-colors ${
-                            isSelected 
-                              ? "bg-gradient-to-br from-[#046741]/20 to-[#046741]/10" 
-                              : "bg-gradient-to-br from-gray-100 to-gray-50"
-                          }`}>
-                            <Icon className={`w-20 h-20 transition-colors ${
-                              isSelected ? "text-[#046741]" : "text-gray-400"
-                            }`} />
+                          <div
+                            className={`relative h-[140px] overflow-hidden flex-shrink-0 flex items-center justify-center transition-colors ${
+                              isSelected
+                                ? "bg-gradient-to-br from-[#046741]/20 to-[#046741]/10"
+                                : "bg-gradient-to-br from-gray-100 to-gray-50"
+                            }`}
+                          >
+                            <Icon
+                              className={`w-20 h-20 transition-colors ${
+                                isSelected ? "text-[#046741]" : "text-gray-400"
+                              }`}
+                            />
                           </div>
 
                           {/* Points Badge - Positioned top-left */}
-                          <div className={`absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors shadow-sm ${
-                            isSelected 
-                              ? "bg-[#046741] text-white" 
-                              : "bg-white text-[#4a5565] border border-gray-200"
-                          }`}>
+                          <div
+                            className={`absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors shadow-sm ${
+                              isSelected
+                                ? "bg-[#046741] text-white"
+                                : "bg-white text-[#4a5565] border border-gray-200"
+                            }`}
+                          >
                             <Gift className="w-3.5 h-3.5" />
-                            <span className="text-xs">{reward.points} visitas</span>
+                            <span className="text-xs">
+                              {reward.points} visitas
+                            </span>
                           </div>
 
                           {/* Content - Flexible */}
                           <div className="p-4 flex flex-col flex-1">
-                            <h4 className={`mb-1 line-clamp-1 transition-colors ${
-                              isSelected ? "text-[#046741]" : "text-[#101828]"
-                            }`}>
+                            <h4
+                              className={`mb-1 line-clamp-1 transition-colors ${
+                                isSelected ? "text-[#046741]" : "text-[#101828]"
+                              }`}
+                            >
                               {reward.name}
                             </h4>
                             <p className="text-sm text-[#4a5565] mb-3 line-clamp-2 flex-1">
@@ -805,11 +929,13 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                               >
                                 <Minus className="w-5 h-5" />
                               </button>
-                              
+
                               <div className="flex-1 text-center">
-                                <span className="text-[#101828]">{quantity}</span>
+                                <span className="text-[#101828]">
+                                  {quantity}
+                                </span>
                               </div>
-                              
+
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -843,26 +969,46 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                     <div className="bg-gradient-to-r from-[#046741]/10 to-[#046741]/5 rounded-[14px] p-5 border border-[#046741]/20">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-[#4a5565] mb-1">Seleccionadas</p>
+                          <p className="text-sm text-[#4a5565] mb-1">
+                            Seleccionadas
+                          </p>
                           <p className="text-[#046741]">
-                            {selectedRewards.reduce((total, r) => total + r.quantity, 0)} café{selectedRewards.reduce((total, r) => total + r.quantity, 0) > 1 ? 's' : ''}
+                            {selectedRewards.reduce(
+                              (total, r) => total + r.quantity,
+                              0
+                            )}{" "}
+                            café
+                            {selectedRewards.reduce(
+                              (total, r) => total + r.quantity,
+                              0
+                            ) > 1
+                              ? "s"
+                              : ""}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-[#4a5565] mb-1">Total a canjear</p>
-                          <p className="text-xl text-[#046741]">{getTotalVisitsToRedeem()} visitas</p>
+                          <p className="text-sm text-[#4a5565] mb-1">
+                            Total a canjear
+                          </p>
+                          <p className="text-xl text-[#046741]">
+                            {getTotalVisitsToRedeem()} visitas
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-[#4a5565] mb-1">Visitas restantes</p>
-                          <p className="text-lg text-[#101828]">{selectedCustomer.visits - getTotalVisitsToRedeem()}</p>
+                          <p className="text-sm text-[#4a5565] mb-1">
+                            Visitas restantes
+                          </p>
+                          <p className="text-lg text-[#101828]">
+                            {selectedCustomer.visits - getTotalVisitsToRedeem()}
+                          </p>
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className="text-center py-3">
                       <p className="text-sm text-[#4a5565]">
-                        {selectedCustomer.visits >= 3 
-                          ? "Usa los botones + y - para seleccionar la cantidad" 
+                        {selectedCustomer.visits >= 3
+                          ? "Usa los botones + y - para seleccionar la cantidad"
                           : "Necesitas acumular más visitas"}
                       </p>
                     </div>
@@ -909,7 +1055,6 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
             <div className="grid gap-3 h-full grid-cols-12">
               {/* Left Column */}
               <div className="flex flex-col gap-3 col-span-7 overflow-hidden">
-                
                 {/* Customer Info Card */}
                 <div className="bg-white rounded-[16px] p-4 border border-gray-100 shadow-sm flex-shrink-0">
                   <div className="flex items-center justify-between gap-4">
@@ -919,18 +1064,38 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                       </div>
                       <div>
                         <p className="text-sm text-[#4a5565]">Cliente</p>
-                        <p className="text-[#101828]">{selectedCustomer.name}</p>
+                        <p className="text-[#101828]">
+                          {selectedCustomer.name}
+                        </p>
                       </div>
                     </div>
                     <div className="bg-gray-100 rounded-[14px] px-4 py-4">
                       <div className="flex items-center justify-center gap-2 mb-1">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 16 16">
-                          <path d={svgPaths.p3155f180} stroke="#4A5565" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.33333" />
-                          <path d={svgPaths.pea6a680} stroke="#4A5565" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.33333" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 16 16"
+                        >
+                          <path
+                            d={svgPaths.p3155f180}
+                            stroke="#4A5565"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.33333"
+                          />
+                          <path
+                            d={svgPaths.pea6a680}
+                            stroke="#4A5565"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.33333"
+                          />
                         </svg>
                         <p className="text-sm text-[#4a5565]">Visitas</p>
                       </div>
-                      <p className="text-[#101828] text-center">{selectedCustomer.visits}</p>
+                      <p className="text-[#101828] text-center">
+                        {selectedCustomer.visits}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -965,23 +1130,30 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                     <div className="flex items-center gap-3">
                       <Coffee className="w-5 h-5 text-[#046741]" />
                       <div>
-                        <p className="text-sm font-medium text-[#101828]">¿Incluye café?</p>
+                        <p className="text-sm font-medium text-[#101828]">
+                          ¿Incluye café?
+                        </p>
                         <p className="text-xs text-[#4a5565]">
-                          {includesCoffee ? "Se registrará visita + cashback" : "Solo se registrará cashback"}
+                          {includesCoffee
+                            ? "Se registrará visita + cashback"
+                            : "Solo se registrará cashback"}
                         </p>
                       </div>
                     </div>
                     <Switch
                       checked={includesCoffee}
-                      onCheckedChange={setIncludesCoffee}
-                      className="data-[state=checked]:bg-[#046741]"
+                      onCheckedChange={(checked) => {
+                        setIncludesCoffee(checked);
+                      }}
                     />
                   </div>
 
                   {/* Barcode Field */}
                   <div className="w-full">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm text-[#4a5565]">Numero del ticket</p>
+                      <p className="text-sm text-[#4a5565]">
+                        Numero del ticket
+                      </p>
                     </div>
                     <button
                       onClick={() => setActiveField("barcode")}
@@ -991,15 +1163,47 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                           : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
-                      <p className={`${barcode ? "text-[#101828]" : "text-gray-400"}`}>
+                      <p
+                        className={`${
+                          barcode ? "text-[#101828]" : "text-gray-400"
+                        }`}
+                      >
                         {barcode || "Ingresa o escanea código"}
                       </p>
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 20 20">
-                          <path d={svgPaths.pf942a70} stroke="#4A5565" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-                          <path d={svgPaths.p3de9ee00} stroke="#4A5565" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-                          <path d={svgPaths.pbdf4440} stroke="#4A5565" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-                          <path d={svgPaths.p1fb905c0} stroke="#4A5565" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            d={svgPaths.pf942a70}
+                            stroke="#4A5565"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.66667"
+                          />
+                          <path
+                            d={svgPaths.p3de9ee00}
+                            stroke="#4A5565"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.66667"
+                          />
+                          <path
+                            d={svgPaths.pbdf4440}
+                            stroke="#4A5565"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.66667"
+                          />
+                          <path
+                            d={svgPaths.p1fb905c0}
+                            stroke="#4A5565"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.66667"
+                          />
                         </svg>
                       </div>
                     </button>
@@ -1010,7 +1214,7 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                 <button
                   onClick={handleCompleteSale}
                   disabled={!amount}
-                  className={`h-14 rounded-[14px] transition-all shadow-sm flex items-center justify-center flex-shrink-0 ${ 
+                  className={`h-14 rounded-[14px] transition-all shadow-sm flex items-center justify-center flex-shrink-0 ${
                     amount
                       ? "bg-[#046741] hover:bg-[#035230] text-white active:scale-[0.98] hover:shadow-md"
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -1025,10 +1229,12 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
                 <div className="bg-gray-100 rounded-[14px] mb-3 flex-shrink-0 p-[24px]">
                   <p className="text-xs text-[#4a5565] mb-0.5">Ingresando:</p>
                   <p className="text-sm text-[#101828]">
-                    {activeField === "amount" ? "Monto de Visita" : "Código de barras"}
+                    {activeField === "amount"
+                      ? "Monto de Visita"
+                      : "Código de barras"}
                   </p>
                 </div>
-                
+
                 <div className="flex-1 min-h-0 flex items-center justify-center">
                   <div className="w-full max-w-sm">
                     <NumericKeypad
@@ -1052,14 +1258,14 @@ export function RegisterSale({ onBack, customers, onRegisterSale, onRedeemReward
             subtitle="Escanea este código en caja para canjear"
             onComplete={handleNextActionFinish}
             type="redeem"
-            redeemedRewards={selectedRewards.map(sr => {
-              const reward = REWARDS.find(r => r.id === sr.rewardId);
+            redeemedRewards={selectedRewards.map((sr) => {
+              const reward = REWARDS.find((r) => r.id === sr.rewardId);
               return {
                 rewardId: sr.rewardId,
-                name: reward?.name || '',
+                name: reward?.name || "",
                 points: reward?.points || 0,
                 quantity: sr.quantity,
-                icon: reward?.icon || Gift
+                icon: reward?.icon || Gift,
               };
             })}
             onModifyRedeem={handleModifyRedeem}
