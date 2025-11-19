@@ -10,6 +10,7 @@ import {
   InputOTPSlot,
 } from "./ui/input-otp";
 import { toast } from "sonner";
+import { otpService } from "../api/otpService";
 
 interface RedeemOTPVerificationProps {
   onBack: () => void;
@@ -24,21 +25,26 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleOTPComplete = async (value: string) => {
+    if (value.length !== 4) return;
+    
     setOtp(value);
     setIsVerifying(true);
-    // Simulamos validación - en producción esto iría a un servidor
-    await new Promise(resolve => setTimeout(resolve, 1200));
     
-    if (value === "1234") {
-      toast.success("Código verificado correctamente");
-      setTimeout(() => {
-        setIsVerifying(false);
-        onVerified();
-      }, 500);
-    } else {
+    try {
+      const response = await otpService.validateOTP(customerPhone, value);
+      if (response.status && response.responseData) {
+        toast.success("Código verificado correctamente");
+        setTimeout(() => {
+          setIsVerifying(false);
+          onVerified();
+        }, 500);
+      } else {
+        throw new Error("Código inválido");
+      }
+    } catch (error) {
       setError(true);
       setIsVerifying(false);
-      toast.error("Código incorrecto");
+      toast.error(error instanceof Error ? error.message : "Código incorrecto");
       setTimeout(() => {
         setOtp("");
         setError(false);
@@ -46,18 +52,23 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setIsResending(true);
-    // Simulamos reenvío de código
-    setTimeout(() => {
-      setIsResending(false);
+    try {
+      await otpService.sendOTP(customerPhone, false);
       toast.success("Código reenviado exitosamente");
-    }, 1500);
+    } catch (error) {
+      console.error("Error al reenviar OTP:", error);
+      toast.error(error instanceof Error ? error.message : "Error al reenviar el código");
+    } finally {
+      setIsResending(false);
+    }
   };
 
-  const handleDemoFill = () => {
-    setOtp("1234");
-    handleOTPComplete("1234");
+  const handleDemoFill = async () => {
+    const demoCode = "1234";
+    setOtp(demoCode);
+    await handleOTPComplete(demoCode);
   };
 
   const handleNumberClick = (num: string) => {

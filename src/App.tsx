@@ -10,6 +10,7 @@ import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { getCustomers } from "./supabase/actions/customerActions";
 import { LoadingSpinner } from "./components/LoadingSpinner";
+import { otpService } from "./api/otpService";
 
 type Screen =
   | "menu"
@@ -115,7 +116,7 @@ function App() {
     setRedeemCustomer(null);
   };
 
-  const handleRequestRedeemOTP = (customer: Customer) => {
+  const handleRequestRedeemOTP = async (customer: Customer) => {
     // Verificar que el cliente tenga al menos 3 visitas para canjear recompensas
     if (customer.visits < 3) {
       toast.error(
@@ -133,9 +134,19 @@ function App() {
       setCurrentScreen("register-sale");
       toast.success("Cliente verificado, puedes canjear recompensas");
     } else {
-      setRedeemCustomer(customer);
-      setCurrentScreen("redeem-otp-verification");
-      toast.success("Código de verificación enviado a " + customer.phone);
+      try {
+        await otpService.sendOTP(customer.phone, false);
+        setRedeemCustomer(customer);
+        setCurrentScreen("redeem-otp-verification");
+        toast.success("Código de verificación enviado a " + customer.phone);
+      } catch (error) {
+        console.error("Error al enviar OTP:", error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Error al enviar el código de verificación"
+        );
+      }
     }
   };
 

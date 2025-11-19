@@ -8,6 +8,7 @@ import type { Customer } from "../types";
 import { createCustomer } from "../supabase/actions/customerActions";
 import { toast } from "sonner";
 import { LoadingSpinner } from "./LoadingSpinner";
+import { otpService } from "../api/otpService";
 
 interface NewCustomerProps {
   onBack: () => void;
@@ -27,6 +28,7 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
   const [activeInput, setActiveInput] = useState<"phone" | "name" | "office" | null>(null);
   const [showPhoneOnly] = useState(!phoneVerified);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
 
   // Establecer foco automático en el campo de teléfono cuando se muestra la pantalla de ingreso
   useEffect(() => {
@@ -206,15 +208,35 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
 
                     <button
                       type="button"
-                      disabled={phone.length !== 10}
-                      onClick={() => onPhoneSubmit(phone)}
-                      className={`h-12 rounded-[14px] transition-all shadow-sm px-12 active:scale-[0.98] ${
-                        phone.length === 10
+                      disabled={phone.length !== 10 || isSendingOTP}
+                      onClick={async () => {
+                        if (isSendingOTP) return;
+                        setIsSendingOTP(true);
+                        try {
+                          await otpService.sendOTP(phone, true);
+                          toast.success("Código enviado a " + phone);
+                          onPhoneSubmit(phone);
+                        } catch (error) {
+                          console.error("Error al enviar OTP:", error);
+                          toast.error(error instanceof Error ? error.message : "Error al enviar el código de verificación");
+                        } finally {
+                          setIsSendingOTP(false);
+                        }
+                      }}
+                      className={`h-12 rounded-[14px] transition-all shadow-sm px-12 active:scale-[0.98] flex items-center justify-center gap-2 ${
+                        phone.length === 10 && !isSendingOTP
                           ? "bg-[#046741] hover:bg-[#035230] text-white"
                           : "bg-gray-200 text-gray-400 cursor-not-allowed"
                       }`}
                     >
-                      <span>Continuar</span>
+                      {isSendingOTP ? (
+                        <>
+                          <LoadingSpinner size={20} />
+                          <span>Enviando...</span>
+                        </>
+                      ) : (
+                        <span>Continuar</span>
+                      )}
                     </button>
                   </div>
                 </div>

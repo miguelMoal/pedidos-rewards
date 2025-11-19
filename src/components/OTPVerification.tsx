@@ -10,6 +10,7 @@ import {
   InputOTPSlot,
 } from "./ui/input-otp";
 import { toast } from "sonner";
+import { otpService } from "../api/otpService";
 
 interface OTPVerificationProps {
   phone: string;
@@ -24,22 +25,26 @@ export function OTPVerification({ phone, onBack, onVerified }: OTPVerificationPr
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleOTPComplete = async (value: string) => {
+    if (value.length !== 4) return;
+    
     setOtp(value);
     setIsVerifying(true);
-    // Simulamos validación - en producción esto iría a un servicio externo
-    // Por ahora, aceptamos cualquier código de 4 dígitos como ejemplo
-    await new Promise(resolve => setTimeout(resolve, 1200));
     
-    if (value.length === 4) {
-      toast.success("Código verificado correctamente");
-      setTimeout(() => {
-        setIsVerifying(false);
-        onVerified();
-      }, 500);
-    } else {
+    try {
+      const response = await otpService.validateOTP(phone, value);
+      if (response.status && response.responseData) {
+        toast.success("Código verificado correctamente");
+        setTimeout(() => {
+          setIsVerifying(false);
+          onVerified();
+        }, 500);
+      } else {
+        throw new Error("Código inválido");
+      }
+    } catch (error) {
       setError(true);
       setIsVerifying(false);
-      toast.error("Código incorrecto");
+      toast.error(error instanceof Error ? error.message : "Código incorrecto");
       setTimeout(() => {
         setOtp("");
         setError(false);
@@ -47,13 +52,17 @@ export function OTPVerification({ phone, onBack, onVerified }: OTPVerificationPr
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setIsResending(true);
-    // Simulamos reenvío de código
-    setTimeout(() => {
-      setIsResending(false);
+    try {
+      await otpService.sendOTP(phone, true);
       toast.success("Código reenviado exitosamente");
-    }, 1500);
+    } catch (error) {
+      console.error("Error al reenviar OTP:", error);
+      toast.error(error instanceof Error ? error.message : "Error al reenviar el código");
+    } finally {
+      setIsResending(false);
+    }
   };
 
   const handleDemoFill = () => {
