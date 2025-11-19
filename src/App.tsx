@@ -33,7 +33,6 @@ function App() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
-  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
 
   useEffect(() => {
     const loadCustomers = async () => {
@@ -59,10 +58,7 @@ function App() {
   };
 
   const handleOTPVerified = () => {
-    // Guardar el teléfono verificado para no pedir OTP de nuevo
-    if (pendingCustomerData?.phone) {
-      setVerifiedPhone(pendingCustomerData.phone);
-    }
+    // Ir a la pantalla de nuevo cliente después de verificar OTP
     setCurrentScreen("new-customer");
   };
 
@@ -127,33 +123,26 @@ function App() {
       return;
     }
 
-    // Si el cliente ya fue verificado recientemente (especialmente si es el último cliente registrado),
-    // omitir el OTP y ir directo a canjear recompensas
-    if (verifiedPhone && customer.phone === verifiedPhone) {
-      setRedeemCustomer(customer);
-      setCurrentScreen("register-sale");
-      toast.success("Cliente verificado, puedes canjear recompensas");
-    } else {
-      // Comentado: usando dummy para canje de puntos - no se envía OTP real
-      // try {
-      //   await otpService.sendOTP(customer.phone, false);
-      //   setRedeemCustomer(customer);
-      //   setCurrentScreen("redeem-otp-verification");
-      //   toast.success("Código de verificación enviado a " + customer.phone);
-      // } catch (error) {
-      //   console.error("Error al enviar OTP:", error);
-      //   toast.error(
-      //     error instanceof Error
-      //       ? error.message
-      //       : "Error al enviar el código de verificación"
-      //   );
-      // }
+    // Siempre pedir OTP para canjear puntos, sin importar si ya fue verificado antes
+    // Comentado: usando dummy para canje de puntos - no se envía OTP real
+    // try {
+    //   await otpService.sendOTP(customer.phone, false);
+    //   setRedeemCustomer(customer);
+    //   setCurrentScreen("redeem-otp-verification");
+    //   toast.success("Código de verificación enviado a " + customer.phone);
+    // } catch (error) {
+    //   console.error("Error al enviar OTP:", error);
+    //   toast.error(
+    //     error instanceof Error
+    //       ? error.message
+    //       : "Error al enviar el código de verificación"
+    //   );
+    // }
 
-      // Usando dummy: ir directo a la pantalla de verificación sin enviar OTP
-      setRedeemCustomer(customer);
-      setCurrentScreen("redeem-otp-verification");
-      toast.success("Código de verificación enviado a " + customer.phone);
-    }
+    // Usando dummy: ir directo a la pantalla de verificación sin enviar OTP
+    setRedeemCustomer(customer);
+    setCurrentScreen("redeem-otp-verification");
+    toast.success("Código de verificación enviado a " + customer.phone);
   };
 
   if (isLoadingCustomers) {
@@ -221,10 +210,8 @@ function App() {
             setCurrentScreen("register-sale");
           }}
           onVerified={() => {
-            // After verification, save the verified phone and go to register-sale with customer pre-selected and direct to redeem
-            if (redeemCustomer) {
-              setVerifiedPhone(redeemCustomer.phone);
-            }
+            // After verification, go to register-sale with customer pre-selected and direct to redeem
+            // No guardamos el teléfono verificado para canje porque siempre se debe pedir OTP
             setCurrentScreen("register-sale");
           }}
           customerPhone={redeemCustomer.phone}
