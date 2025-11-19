@@ -5,7 +5,7 @@ import { NumericKeypad } from "./NumericKeypad";
 import { AlphabeticKeypad } from "./AlphabeticKeypad";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import type { Customer } from "../types";
-import { createCustomer } from "../supabase/actions/customerActions";
+import { createCustomer, getCustomerByPhone } from "../supabase/actions/customerActions";
 import { toast } from "sonner";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { otpService } from "../api/otpService";
@@ -213,6 +213,15 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
                         if (isSendingOTP) return;
                         setIsSendingOTP(true);
                         try {
+                          // Verificar si el cliente ya existe antes de enviar el OTP
+                          const existingCustomer = await getCustomerByPhone(phone);
+                          if (existingCustomer) {
+                            toast.error("Este número de teléfono ya está registrado. El cliente ya existe en el sistema.");
+                            setIsSendingOTP(false);
+                            return;
+                          }
+
+                          // Si no existe, proceder con el envío del OTP
                           await otpService.sendOTP(phone, true);
                           toast.success("Código enviado a " + phone);
                           onPhoneSubmit(phone);
@@ -232,7 +241,7 @@ export function NewCustomer({ onBack, onPhoneSubmit, onRegister, initialPhone = 
                       {isSendingOTP ? (
                         <>
                           <LoadingSpinner size={20} />
-                          <span>Enviando...</span>
+                          <span>Verificando...</span>
                         </>
                       ) : (
                         <span>Continuar</span>
