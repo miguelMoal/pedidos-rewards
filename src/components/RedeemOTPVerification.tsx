@@ -25,7 +25,7 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleOTPComplete = async (value: string) => {
-    if (value.length !== 4) return;
+    if (value.length !== 6) return;
     
     setOtp(value);
     setIsVerifying(true);
@@ -66,16 +66,16 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
   };
 
   const handleDemoFill = async () => {
-    const demoCode = "1234";
+    const demoCode = "123456";
     setOtp(demoCode);
     await handleOTPComplete(demoCode);
   };
 
   const handleNumberClick = (num: string) => {
-    if (otp.length < 4) {
+    if (otp.length < 6) {
       const newOtp = otp + num;
       setOtp(newOtp);
-      if (newOtp.length === 4) {
+      if (newOtp.length === 6) {
         handleOTPComplete(newOtp);
       }
     }
@@ -139,19 +139,19 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
                   {/* Title */}
                   <h3 className="text-[#101828] mb-1.5">Para continuar verifica tu número</h3>
                   <p className="text-sm text-[#4a5565] mb-1">
-                    Ingresa el código de 4 dígitos enviado a
+                    Ingresa el código de 6 dígitos enviado a
                   </p>
                   <p className="text-[#046741] mb-4">{customerPhone}</p>
 
                   {/* OTP Input */}
                   <div className="flex justify-center mb-4">
                     <InputOTP
-                      maxLength={4}
+                      maxLength={6}
                       value={otp}
                       onChange={(value) => {
                         setOtp(value);
                         setError(false);
-                        if (value.length === 4) {
+                        if (value.length === 6) {
                           handleOTPComplete(value);
                         }
                       }}
@@ -189,6 +189,22 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
                               : "border-gray-200 focus:border-[#046741]"
                           }`}
                         />
+                        <InputOTPSlot 
+                          index={4} 
+                          className={`w-12 h-12 lg:w-14 lg:h-14 text-xl lg:text-2xl border-2 rounded-xl ${
+                            error 
+                              ? "border-red-500 bg-red-50" 
+                              : "border-gray-200 focus:border-[#046741]"
+                          }`}
+                        />
+                        <InputOTPSlot 
+                          index={5} 
+                          className={`w-12 h-12 lg:w-14 lg:h-14 text-xl lg:text-2xl border-2 rounded-xl ${
+                            error 
+                              ? "border-red-500 bg-red-50" 
+                              : "border-gray-200 focus:border-[#046741]"
+                          }`}
+                        />
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
@@ -217,7 +233,7 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
                 {/* Help Text */}
                 <div className="mt-4 text-center">
                   <p className="text-xs text-[#4a5565]">
-                    💡 Para demo, usa el código: <span className="text-[#046741]">1234</span>
+                    💡 Para demo, usa el código: <span className="text-[#046741]">123456</span>
                   </p>
                 </div>
               </div>
