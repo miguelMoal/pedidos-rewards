@@ -10,7 +10,7 @@ import {
   InputOTPSlot,
 } from "./ui/input-otp";
 import { toast } from "sonner";
-import { otpService } from "../api/otpService";
+// import { otpService } from "../api/otpService"; // Comentado: usando dummy para canje de puntos
 
 interface RedeemOTPVerificationProps {
   onBack: () => void;
@@ -25,57 +25,82 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleOTPComplete = async (value: string) => {
-    if (value.length !== 6) return;
-    
     setOtp(value);
     setIsVerifying(true);
+    // Simulamos validación - usando dummy para canje de puntos
+    // Por ahora, aceptamos el código "1234" como ejemplo
+    await new Promise(resolve => setTimeout(resolve, 1200));
     
-    try {
-      const response = await otpService.validateOTP(customerPhone, value);
-      if (response.status && response.responseData) {
-        toast.success("Código verificado correctamente");
-        setTimeout(() => {
-          setIsVerifying(false);
-          onVerified();
-        }, 500);
-      } else {
-        throw new Error("Código inválido");
-      }
-    } catch (error) {
+    if (value === "1234") {
+      toast.success("Código verificado correctamente");
+      setTimeout(() => {
+        setIsVerifying(false);
+        onVerified();
+      }, 500);
+    } else {
       setError(true);
       setIsVerifying(false);
-      toast.error(error instanceof Error ? error.message : "Código incorrecto");
+      toast.error("Código incorrecto");
       setTimeout(() => {
         setOtp("");
         setError(false);
       }, 1500);
     }
+
+    // Código real del servicio OTP (comentado)
+    // try {
+    //   const response = await otpService.validateOTP(customerPhone, value);
+    //   if (response.status && response.responseData) {
+    //     toast.success("Código verificado correctamente");
+    //     setTimeout(() => {
+    //       setIsVerifying(false);
+    //       onVerified();
+    //     }, 500);
+    //   } else {
+    //     throw new Error("Código inválido");
+    //   }
+    // } catch (error) {
+    //   setError(true);
+    //   setIsVerifying(false);
+    //   toast.error(error instanceof Error ? error.message : "Código incorrecto");
+    //   setTimeout(() => {
+    //     setOtp("");
+    //     setError(false);
+    //   }, 1500);
+    // }
   };
 
-  const handleResend = async () => {
+  const handleResend = () => {
     setIsResending(true);
-    try {
-      await otpService.sendOTP(customerPhone, false);
-      toast.success("Código reenviado exitosamente");
-    } catch (error) {
-      console.error("Error al reenviar OTP:", error);
-      toast.error(error instanceof Error ? error.message : "Error al reenviar el código");
-    } finally {
+    // Simulamos reenvío de código - usando dummy para canje de puntos
+    setTimeout(() => {
       setIsResending(false);
-    }
+      toast.success("Código reenviado exitosamente");
+    }, 1500);
+
+    // Código real del servicio OTP (comentado)
+    // try {
+    //   await otpService.sendOTP(customerPhone, false);
+    //   toast.success("Código reenviado exitosamente");
+    // } catch (error) {
+    //   console.error("Error al reenviar OTP:", error);
+    //   toast.error(error instanceof Error ? error.message : "Error al reenviar el código");
+    // } finally {
+    //   setIsResending(false);
+    // }
   };
 
-  const handleDemoFill = async () => {
-    const demoCode = "123456";
+  const handleDemoFill = () => {
+    const demoCode = "1234";
     setOtp(demoCode);
-    await handleOTPComplete(demoCode);
+    handleOTPComplete(demoCode);
   };
 
   const handleNumberClick = (num: string) => {
-    if (otp.length < 6) {
+    if (otp.length < 4) {
       const newOtp = otp + num;
       setOtp(newOtp);
-      if (newOtp.length === 6) {
+      if (newOtp.length === 4) {
         handleOTPComplete(newOtp);
       }
     }
@@ -139,19 +164,19 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
                   {/* Title */}
                   <h3 className="text-[#101828] mb-1.5">Para continuar verifica tu número</h3>
                   <p className="text-sm text-[#4a5565] mb-1">
-                    Ingresa el código de 6 dígitos enviado a
+                    Ingresa el código de 4 dígitos enviado a
                   </p>
                   <p className="text-[#046741] mb-4">{customerPhone}</p>
 
                   {/* OTP Input */}
                   <div className="flex justify-center mb-4">
                     <InputOTP
-                      maxLength={6}
+                      maxLength={4}
                       value={otp}
                       onChange={(value) => {
                         setOtp(value);
                         setError(false);
-                        if (value.length === 6) {
+                        if (value.length === 4) {
                           handleOTPComplete(value);
                         }
                       }}
@@ -189,22 +214,6 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
                               : "border-gray-200 focus:border-[#046741]"
                           }`}
                         />
-                        <InputOTPSlot 
-                          index={4} 
-                          className={`w-12 h-12 lg:w-14 lg:h-14 text-xl lg:text-2xl border-2 rounded-xl ${
-                            error 
-                              ? "border-red-500 bg-red-50" 
-                              : "border-gray-200 focus:border-[#046741]"
-                          }`}
-                        />
-                        <InputOTPSlot 
-                          index={5} 
-                          className={`w-12 h-12 lg:w-14 lg:h-14 text-xl lg:text-2xl border-2 rounded-xl ${
-                            error 
-                              ? "border-red-500 bg-red-50" 
-                              : "border-gray-200 focus:border-[#046741]"
-                          }`}
-                        />
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
@@ -233,7 +242,7 @@ export function RedeemOTPVerification({ onBack, onVerified, customerPhone }: Red
                 {/* Help Text */}
                 <div className="mt-4 text-center">
                   <p className="text-xs text-[#4a5565]">
-                    💡 Para demo, usa el código: <span className="text-[#046741]">123456</span>
+                    💡 Para demo, usa el código: <span className="text-[#046741]">1234</span>
                   </p>
                 </div>
               </div>

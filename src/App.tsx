@@ -10,7 +10,7 @@ import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { getCustomers } from "./supabase/actions/customerActions";
 import { LoadingSpinner } from "./components/LoadingSpinner";
-import { otpService } from "./api/otpService";
+// import { otpService } from "./api/otpService"; // Comentado: usando dummy para canje de puntos
 
 type Screen =
   | "menu"
@@ -134,19 +134,25 @@ function App() {
       setCurrentScreen("register-sale");
       toast.success("Cliente verificado, puedes canjear recompensas");
     } else {
-      try {
-        await otpService.sendOTP(customer.phone, false);
-        setRedeemCustomer(customer);
-        setCurrentScreen("redeem-otp-verification");
-        toast.success("Código de verificación enviado a " + customer.phone);
-      } catch (error) {
-        console.error("Error al enviar OTP:", error);
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Error al enviar el código de verificación"
-        );
-      }
+      // Comentado: usando dummy para canje de puntos - no se envía OTP real
+      // try {
+      //   await otpService.sendOTP(customer.phone, false);
+      //   setRedeemCustomer(customer);
+      //   setCurrentScreen("redeem-otp-verification");
+      //   toast.success("Código de verificación enviado a " + customer.phone);
+      // } catch (error) {
+      //   console.error("Error al enviar OTP:", error);
+      //   toast.error(
+      //     error instanceof Error
+      //       ? error.message
+      //       : "Error al enviar el código de verificación"
+      //   );
+      // }
+
+      // Usando dummy: ir directo a la pantalla de verificación sin enviar OTP
+      setRedeemCustomer(customer);
+      setCurrentScreen("redeem-otp-verification");
+      toast.success("Código de verificación enviado a " + customer.phone);
     }
   };
 
