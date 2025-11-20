@@ -91,7 +91,6 @@ export function RegisterSale({
   >([]);
   const [showRedeemConfirmation, setShowRedeemConfirmation] = useState(false);
   const [showNextActionDialog, setShowNextActionDialog] = useState(false);
-  const [showRedeemCompleted, setShowRedeemCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [identificationError, setIdentificationError] = useState<string | null>(
@@ -849,11 +848,16 @@ export function RegisterSale({
                   <div className="flex justify-center mb-6">
                     {isLoadingRewards ? (
                       <div className="flex items-center justify-center py-12">
-                        <LoadingSpinner size={48} message="Cargando productos..." />
+                        <LoadingSpinner
+                          size={48}
+                          message="Cargando productos..."
+                        />
                       </div>
                     ) : rewards.length === 0 ? (
                       <div className="text-center py-12">
-                        <p className="text-[#4a5565]">No hay productos disponibles</p>
+                        <p className="text-[#4a5565]">
+                          No hay productos disponibles
+                        </p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-5xl">
@@ -870,102 +874,108 @@ export function RegisterSale({
                             <div
                               key={reward.id}
                               className={`relative bg-white rounded-[16px] overflow-hidden border-2 transition-all duration-200 text-left flex flex-col w-full ${
-                            isSelected
-                              ? "border-[#046741] shadow-xl"
-                              : "border-gray-200"
-                          }`}
-                        >
-                          {/* Quantity Badge */}
-                          {isSelected && (
-                            <div className="absolute top-3 right-3 z-10 min-w-[36px] h-9 px-2 rounded-full bg-[#046741] flex items-center justify-center shadow-lg">
-                              <span className="text-white">×{quantity}</span>
-                            </div>
-                          )}
-
-                          {/* Product Image - Fixed height */}
-                          <div
-                            className={`relative h-[140px] overflow-hidden flex-shrink-0 flex items-center justify-center transition-colors ${
-                              isSelected
-                                ? "bg-gradient-to-br from-[#046741]/20 to-[#046741]/10"
-                                : "bg-gradient-to-br from-gray-100 to-gray-50"
-                            }`}
-                          >
-                            <Icon
-                              className={`w-20 h-20 transition-colors ${
-                                isSelected ? "text-[#046741]" : "text-gray-400"
-                              }`}
-                            />
-                          </div>
-
-                          {/* Points Badge - Positioned top-left */}
-                          <div
-                            className={`absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors shadow-sm ${
-                              isSelected
-                                ? "bg-[#046741] text-white"
-                                : "bg-white text-[#4a5565] border border-gray-200"
-                            }`}
-                          >
-                            <Gift className="w-3.5 h-3.5" />
-                            <span className="text-xs">
-                              {reward.points} visitas
-                            </span>
-                          </div>
-
-                          {/* Content - Flexible */}
-                          <div className="p-4 flex flex-col flex-1">
-                            <h4
-                              className={`mb-1 line-clamp-1 transition-colors ${
-                                isSelected ? "text-[#046741]" : "text-[#101828]"
+                                isSelected
+                                  ? "border-[#046741] shadow-xl"
+                                  : "border-gray-200"
                               }`}
                             >
-                              {reward.name}
-                            </h4>
-                            <p className="text-sm text-[#4a5565] mb-3 line-clamp-2 flex-1">
-                              {reward.description}
-                            </p>
+                              {/* Quantity Badge */}
+                              {isSelected && (
+                                <div className="absolute top-3 right-3 z-10 min-w-[36px] h-9 px-2 rounded-full bg-[#046741] flex items-center justify-center shadow-lg">
+                                  <span className="text-white">
+                                    ×{quantity}
+                                  </span>
+                                </div>
+                              )}
 
-                            {/* Quantity Controls */}
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  decrementQuantity(reward.id);
-                                }}
-                                disabled={quantity === 0}
-                                className="w-10 h-10 rounded-full border-2 border-[#046741] bg-white text-[#046741] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#046741] hover:text-white transition-colors"
+                              {/* Product Image - Fixed height */}
+                              <div
+                                className={`relative h-[140px] overflow-hidden flex-shrink-0 flex items-center justify-center transition-colors ${
+                                  isSelected
+                                    ? "bg-gradient-to-br from-[#046741]/20 to-[#046741]/10"
+                                    : "bg-gradient-to-br from-gray-100 to-gray-50"
+                                }`}
                               >
-                                <Minus className="w-5 h-5" />
-                              </button>
+                                <Icon
+                                  className={`w-20 h-20 transition-colors ${
+                                    isSelected
+                                      ? "text-[#046741]"
+                                      : "text-gray-400"
+                                  }`}
+                                />
+                              </div>
 
-                              <div className="flex-1 text-center">
-                                <span className="text-[#101828]">
-                                  {quantity}
+                              {/* Points Badge - Positioned top-left */}
+                              <div
+                                className={`absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors shadow-sm ${
+                                  isSelected
+                                    ? "bg-[#046741] text-white"
+                                    : "bg-white text-[#4a5565] border border-gray-200"
+                                }`}
+                              >
+                                <Gift className="w-3.5 h-3.5" />
+                                <span className="text-xs">
+                                  {reward.points} visitas
                                 </span>
                               </div>
 
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  incrementQuantity(reward.id);
-                                }}
-                                disabled={!canAddMore}
-                                className="w-10 h-10 rounded-full bg-[#046741] text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#035230] transition-colors"
-                              >
-                                <Plus className="w-5 h-5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Not enough visits indicator */}
-                          {!canAddMore && quantity === 0 && (
-                            <div className="absolute inset-0 bg-white/90 flex items-center justify-center backdrop-blur-sm">
-                              <div className="text-center">
-                                <p className="text-sm text-red-600 px-4 py-2 bg-red-50 rounded-full border border-red-200">
-                                  Visitas insuficientes
+                              {/* Content - Flexible */}
+                              <div className="p-4 flex flex-col flex-1">
+                                <h4
+                                  className={`mb-1 line-clamp-1 transition-colors ${
+                                    isSelected
+                                      ? "text-[#046741]"
+                                      : "text-[#101828]"
+                                  }`}
+                                >
+                                  {reward.name}
+                                </h4>
+                                <p className="text-sm text-[#4a5565] mb-3 line-clamp-2 flex-1">
+                                  {reward.description}
                                 </p>
+
+                                {/* Quantity Controls */}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      decrementQuantity(reward.id);
+                                    }}
+                                    disabled={quantity === 0}
+                                    className="w-10 h-10 rounded-full border-2 border-[#046741] bg-white text-[#046741] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#046741] hover:text-white transition-colors"
+                                  >
+                                    <Minus className="w-5 h-5" />
+                                  </button>
+
+                                  <div className="flex-1 text-center">
+                                    <span className="text-[#101828]">
+                                      {quantity}
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      incrementQuantity(reward.id);
+                                    }}
+                                    disabled={!canAddMore}
+                                    className="w-10 h-10 rounded-full bg-[#046741] text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#035230] transition-colors"
+                                  >
+                                    <Plus className="w-5 h-5" />
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          )}
+
+                              {/* Not enough visits indicator */}
+                              {!canAddMore && quantity === 0 && (
+                                <div className="absolute inset-0 bg-white/90 flex items-center justify-center backdrop-blur-sm">
+                                  <div className="text-center">
+                                    <p className="text-sm text-red-600 px-4 py-2 bg-red-50 rounded-full border border-red-200">
+                                      Visitas insuficientes
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -1293,18 +1303,6 @@ export function RegisterSale({
             onRegisterAnother={handleNextActionRegisterSale}
             onRedeemMore={handleNextActionRedeemMore}
             type="redeem"
-          />
-        </div>
-      )}
-
-      {/* Redeem Completed Screen */}
-      {showRedeemCompleted && (
-        <div className="fixed inset-0 z-50">
-          <Confirmation
-            message="¡Recompensas Canjeadas!"
-            subtitle=""
-            onComplete={handleNextActionFinish}
-            type="redeem-completed"
           />
         </div>
       )}
